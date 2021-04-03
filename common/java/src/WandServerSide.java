@@ -10,8 +10,8 @@ import net.minecraft.block.SlabBlock;
 import net.minecraft.block.SnowBlock;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtList;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.nicguzzo.WandsMod;
@@ -35,24 +35,24 @@ public class WandServerSide {
         
 		//LOGGER.info("mode " +mode);		
 		ItemStack shulker=null;
-		ItemStack offhand=WandsMod.compat.get_player_offhand_stack(player.inventory);
+		ItemStack offhand=WandsMod.compat.get_player_offhand_stack(player.getInventory());
 		if(offhand!=null && offhand.getItem().getTranslationKey().endsWith("shulker_box")){
 			shulker=offhand;
 		}
 		
 		Vector<Integer> slots=new Vector<Integer>();
-		ListTag shulker_items=null;
+		NbtList shulker_items=null;
 		if(shulker!=null){
-			CompoundTag entity_tag =shulker.getSubTag("BlockEntityTag");
+			NbtCompound entity_tag =shulker.getSubTag("BlockEntityTag");
 			shulker_items = entity_tag.getList("Items", 10);		
 		}
-		LOGGER.info("shulker_items: "+shulker_items);
-		LOGGER.info("palatte_mode: "+palatte_mode);
+		//LOGGER.info("shulker_items: "+shulker_items);
+		//LOGGER.info("palatte_mode: "+palatte_mode);
 		if(	palatte_mode==WandItem.PaletteMode.SAME){
 			if(shulker_items!=null){
 				for (int i = 0, len = shulker_items.size(); i < len; ++i) {
-					CompoundTag itemTag = shulker_items.getCompound(i);
-					ItemStack s = ItemStack.fromTag(itemTag);
+					NbtCompound itemTag = shulker_items.getCompound(i);
+					ItemStack s = ItemStack.fromNbt(itemTag);
 					Block b=Block.getBlockFromItem(s.getItem());
 					if( b!=null && b==state.getBlock()){
 						slots.add(i);
@@ -65,15 +65,15 @@ public class WandServerSide {
 		{	
 			if(shulker_items!=null){
 				for (int i = 0, len = shulker_items.size(); i < len; ++i) {
-					CompoundTag itemTag = shulker_items.getCompound(i);
-					ItemStack s = ItemStack.fromTag(itemTag);
+					NbtCompound itemTag = shulker_items.getCompound(i);
+					ItemStack s = ItemStack.fromNbt(itemTag);
 					if( Block.getBlockFromItem(s.getItem())!=null){
 						slots.add(i);
-					}							
+					}
 				}
 			}else{
-				for (int i = 0; i < WandsMod.compat.get_main_inventory_size(player.inventory); ++i) {
-					ItemStack stack2 =WandsMod.compat.get_player_main_stack(player.inventory,i);
+				for (int i = 0; i < WandsMod.compat.get_main_inventory_size(player.getInventory()); ++i) {
+					ItemStack stack2 =WandsMod.compat.get_player_main_stack(player.getInventory(),i);
 					Block blk=Block.getBlockFromItem(stack2.getItem());						
 					if(blk!=null && blk != Blocks.AIR){
 						slots.add(i);
@@ -107,10 +107,10 @@ public class WandServerSide {
                 ze=pos1.getZ();							
             }
 			if(mode==4){//line
-				//System.out.println("Line! pos0 "+pos0+" pos1 "+pos1);
+				//LOGGER.info("Line! pos0 "+pos0+" pos1 "+pos1);
 				WandServerSide.line(pos0,pos1,player,state,palatte_mode,isCreative,experienceProgress,wand_stack,slots,shulker_items,mode);
 			}else if(mode==5){//circle
-				//System.out.println("circle! pos0 "+pos0+" pos1 "+pos1);
+				//LOGGER.info("circle! pos0 "+pos0+" pos1 "+pos1);
 				WandServerSide.circle(pos0,pos1,player,state,palatte_mode,isCreative,experienceProgress,wand_stack,plane,slots,shulker_items,mode);
 			}else{//box
 				for(int z=zs;z<ze;z++){
@@ -128,7 +128,7 @@ public class WandServerSide {
 		slots=null;
     }
 	static public void undo(PlayerEntity player,int n){
-		CircularBuffer u=player_undo.get(player.getEntityId());
+		CircularBuffer u=player_undo.get(player.getId());
 		if(u!=null){
 			for(int i=0;i<n && i<u.size();i++){
 				BlockPos p=u.pop();
@@ -140,11 +140,11 @@ public class WandServerSide {
 		}
 	}
 	static public void redo(PlayerEntity player,int n){
-		CircularBuffer u=player_undo.get(player.getEntityId());
+		CircularBuffer u=player_undo.get(player.getId());
 		if(u!=null){
-			//System.out.println("redo");
+			//LOGGER.info("redo");
 			for(int i=0;i<n && u.can_go_forward();i++){
-				//System.out.println("redo "+i);
+				//LOGGER.info("redo "+i);
 				u.forward();
 				CircularBuffer.P p=u.peek();
 				if(p!=null && p.pos!=null && p.state!=null){					
@@ -155,7 +155,7 @@ public class WandServerSide {
 		}
 	}
     static private boolean place(PlayerEntity player,BlockState state,BlockPos pos,
-		WandItem.PaletteMode palatte_mode,boolean isCreative,float experienceProgress,ItemStack wand_stack,Vector<Integer> slots,ListTag shulker_items,int mode){
+		WandItem.PaletteMode palatte_mode,boolean isCreative,float experienceProgress,ItemStack wand_stack,Vector<Integer> slots,NbtList shulker_items,int mode){
 		
 		boolean placed = false;				
         float BLOCKS_PER_XP=WandsMod.config.blocks_per_xp;
@@ -172,22 +172,22 @@ public class WandServerSide {
 				}else if (palatte_mode==WandItem.PaletteMode.ROUND_ROBIN){																
 					slt=(slt+1)% slots.size();										
 				}else if (palatte_mode==WandItem.PaletteMode.SAME){
-					LOGGER.info("slots "+slots);
+					//LOGGER.info("slots "+slots);
 				}
 			}
 			//LOGGER.info("slt " +slt);
 			if(shulker_items!=null){
-				LOGGER.info("shulker_items");
-				CompoundTag itemTag = shulker_items.getCompound(slots.get(slt));
-				stack_item = ItemStack.fromTag(itemTag);
+				//LOGGER.info("shulker_items");
+				NbtCompound itemTag = shulker_items.getCompound(slots.get(slt));
+				stack_item = ItemStack.fromNbt(itemTag);
 			}else{
-				LOGGER.info("no shulker");
-				stack_item =WandsMod.compat.get_player_main_stack(player.inventory,slots.get(slt));
-				LOGGER.info("stack_item "+ stack_item);
+				//LOGGER.info("no shulker");
+				stack_item =WandsMod.compat.get_player_main_stack(player.getInventory(),slots.get(slt));
+				//LOGGER.info("stack_item "+ stack_item);
 			}
 			if(stack_item!=null){
 				blk=Block.getBlockFromItem(stack_item.getItem());				
-				LOGGER.info("blk "+ blk);
+				//LOGGER.info("blk "+ blk);
 			}
 		}
 		if(blk!=null){
@@ -200,7 +200,7 @@ public class WandServerSide {
 					state=blk.getDefaultState();
 			}								
 		}
-		LOGGER.info("state "+ state);
+		//LOGGER.info("state "+ state);
 		
 		Block block=state.getBlock();		
 		BlockState state2=player.world.getBlockState(pos);
@@ -222,7 +222,7 @@ public class WandServerSide {
 			}
 		
 			if (isCreative) {
-				int id=player.getEntityId();
+				int id=player.getId();
 				if(player_undo.get(id)==null){
 					player_undo.put(id,new CircularBuffer(MAX_UNDO));
 				}
@@ -233,7 +233,7 @@ public class WandServerSide {
 			} else {						
 				float xp=WandItem.calc_xp(player.experienceLevel,experienceProgress);		
 				float dec=0.0f;
-				//System.out.println("BLOCKS_PER_XP "+BLOCKS_PER_XP);
+				//LOGGER.info("BLOCKS_PER_XP "+BLOCKS_PER_XP);
 				//LOGGER.info("BLOCKS_PER_XP "+BLOCKS_PER_XP);
 				if(BLOCKS_PER_XP!=0){
 					dec=  (1.0f/BLOCKS_PER_XP);
@@ -242,19 +242,19 @@ public class WandServerSide {
 					
 					ItemStack item_stack = new ItemStack(state.getBlock());
 					if(shulker_items!=null && slots.size()>0){
-						LOGGER.info("placing from shulker "+state);
-						LOGGER.info("slots "+slots);
+						//LOGGER.info("placing from shulker "+state);
+						//LOGGER.info("slots "+slots);
 						int ss=slots.get(0);
-						LOGGER.info("ss "+ss);
-						CompoundTag itemTag = shulker_items.getCompound(ss);
-						ItemStack s = ItemStack.fromTag(itemTag);
+						//LOGGER.info("ss "+ss);
+						NbtCompound itemTag = shulker_items.getCompound(ss);
+						ItemStack s = ItemStack.fromNbt(itemTag);
 						placed = player.world.setBlockState(pos, state);
 						if(placed){
 							s.setCount(s.getCount()-d);
-							shulker_items.set(ss, s.toTag(itemTag));
+							shulker_items.set(ss, s.writeNbt(itemTag));
 						}
 					}else{
-						ItemStack off_hand_stack = WandsMod.compat.get_player_offhand_stack(player.inventory);
+						ItemStack off_hand_stack = WandsMod.compat.get_player_offhand_stack(player.getInventory());
 						if (!off_hand_stack.isEmpty() && item_stack.getItem() == off_hand_stack.getItem()
 								&& WandsMod.compat.item_stacks_equal(item_stack, off_hand_stack)
 								&& off_hand_stack.getCount()>=d
@@ -262,10 +262,10 @@ public class WandServerSide {
 						{
 							placed = player.world.setBlockState(pos, state);
 							if(placed)
-								WandsMod.compat.player_offhand_stack_dec(player.inventory,d);
+								WandsMod.compat.player_offhand_stack_dec(player.getInventory(),d);
 						} else {
-							for (int i = 0; i < WandsMod.compat.get_main_inventory_size(player.inventory); ++i) {
-								ItemStack stack2 = WandsMod.compat.get_player_main_stack(player.inventory, i);
+							for (int i = 0; i < WandsMod.compat.get_main_inventory_size(player.getInventory()); ++i) {
+								ItemStack stack2 = WandsMod.compat.get_player_main_stack(player.getInventory(), i);
 								if (!stack2.isEmpty() &&
 									item_stack.getItem() == stack2.getItem() && 
 									stack2.getCount()>=d) {
@@ -275,7 +275,7 @@ public class WandServerSide {
 							if (slot > -1) {
 								placed = player.world.setBlockState(pos, state);
 								if(placed){
-									WandsMod.compat.player_stack_dec(player.inventory,slot,d);								
+									WandsMod.compat.player_stack_dec(player.getInventory(),slot,d);								
 								}
 							}
 						}
@@ -318,7 +318,7 @@ public class WandServerSide {
 	// bresenham 3d from https://www.geeksforgeeks.org/bresenhams-algorithm-for-3-d-line-drawing/
 	private static void line(	BlockPos pos0,BlockPos pos1,PlayerEntity player,BlockState state,
 								WandItem.PaletteMode palatte_mode,boolean isCreative,float experienceProgress,ItemStack wand_stack,
-								Vector<Integer> slots,ListTag shulker_items,int mode)  
+								Vector<Integer> slots,NbtList shulker_items,int mode)  
     {  
 		
 		int x1=pos0.getX();
@@ -408,7 +408,7 @@ public class WandServerSide {
 
 	static private void drawCircle(int plane,int xc, int yc,int zc, int x, int y,int z,
 		PlayerEntity player,BlockState state,WandItem.PaletteMode palatte_mode,boolean isCreative,float experienceProgress,ItemStack wand_stack,
-		Vector<Integer> slots,ListTag shulker_items,int mode
+		Vector<Integer> slots,NbtList shulker_items,int mode
 		)
 	{
 		switch(plane){
@@ -448,7 +448,7 @@ public class WandServerSide {
 	}
 	private static void circle(BlockPos pos0,BlockPos pos1,PlayerEntity player,BlockState state,WandItem.PaletteMode palatte_mode,
 								boolean isCreative,float experienceProgress,ItemStack wand_stack,int plane,
-								Vector<Integer> slots,ListTag shulker_items,int mode
+								Vector<Integer> slots,NbtList shulker_items,int mode
 								)
 	{
 		int r =1;

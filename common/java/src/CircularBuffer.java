@@ -2,6 +2,7 @@ package net.nicguzzo.common;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
+import net.nicguzzo.common.CircularBuffer.P;
 
 class CircularBuffer {
     class P{

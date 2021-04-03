@@ -1,7 +1,6 @@
 package net.nicguzzo.common;
 
 import net.minecraft.world.World;
-import org.lwjgl.opengl.GL11;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.block.Block;
@@ -13,13 +12,21 @@ import net.minecraft.block.PaneBlock;
 
 import net.minecraft.block.SlabBlock;
 import net.minecraft.block.StairsBlock;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.Camera;
+import net.minecraft.client.render.Tessellator;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtList;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 import net.nicguzzo.WandsMod;
+import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.render.GameRenderer;
 
 public class WandsBaseRenderer{
 	
@@ -31,7 +38,7 @@ public class WandsBaseRenderer{
 	boolean isDoubleSlab,boolean isSlabTop,
 	float experienceProgress,
 	MyDir side,
-	boolean isFullCube,
+	boolean isFullCube,	
 	double hit_x,double hit_y,double hit_z)
 	{
 		WandItem wand=WandsMod.compat.get_player_wand(player);
@@ -39,224 +46,261 @@ public class WandsBaseRenderer{
 			return;
 		}
 		
-		RenderSystem.pushMatrix();				
-		RenderSystem.translated(-camX, -camY, -camZ);
-		RenderSystem.enableDepthTest();
-		RenderSystem.enableBlend();
-		RenderSystem.defaultBlendFunc();
-		RenderSystem.disableTexture();
 		
-		
-		GL11.glLineWidth(3.0f);
-		GL11.glBegin(GL11.GL_LINES);
-		
-		Block block = block_state.getBlock();
-		
-		int d = 1;
-		boolean is_slab = false;
-		SlabBlock slab = null;		
-		if (block instanceof SlabBlock) {
-			is_slab = true;
-			slab = (SlabBlock) block;
-			if (isDoubleSlab) {
-				d = 2;
-			}
-		}
-		ItemStack item_stack = new ItemStack(block);
+		Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
+      	if (camera.isReady()) 
+		{			
+			Vec3d c = camera.getPos().negate();
+         	//Box box = (new Box(pos1, pos2)).offset(vec3d);
+			 
+			Tessellator tessellator = Tessellator.getInstance();
+			BufferBuilder bufferBuilder = tessellator.getBuffer();
+			RenderSystem.setShader(GameRenderer::getPositionColorShader);
+			bufferBuilder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+			//WorldRenderer.drawBox(bufferBuilder, minX, minY, minZ, maxX, maxY, maxZ, red, green, blue, alpha);
 
-		ItemStack shulker=null;
-		ListTag shulker_items=null;
-		ItemStack offhand=WandsMod.compat.get_player_offhand_stack(player.inventory);
-		if(offhand!=null && offhand.getItem().getTranslationKey().endsWith("shulker_box")){
-			shulker=offhand;
-		}
-		int in_shulker=0;
-		if(shulker!=null){
+			//bufferBuilder.vertex(pos.getX()+c.x,pos.getY()+c.y , pos.getZ()+c.z).color(255,255,255,255).next();
+			//bufferBuilder.vertex(pos.getX()+c.x,pos.getY()+c.y+1 , pos.getZ()+c.z).color(255,255,255,255).next();
 			
-			CompoundTag entity_tag =shulker.getSubTag("BlockEntityTag");
-			shulker_items = entity_tag.getList("Items", 10);		
-			if(shulker_items!=null){
-				for (int i = 0, len = shulker_items.size(); i < len; ++i) {
-					CompoundTag itemTag = shulker_items.getCompound(i);
-					ItemStack s = ItemStack.fromTag(itemTag);
-					if(WandItem.fill_pos1!=null){
-						Item it=Item.fromBlock(world.getBlockState(WandItem.fill_pos1).getBlock());
-						if( s.getItem()== it){
-							in_shulker+=s.getCount();
-						}
-					}else{
-						if( s.getItem()== item_stack.getItem()){
-							in_shulker+=s.getCount();
-						}
-					}							
-				}
-				//System.out.println("shulker "+in_shulker);
-			}
-		}
-		
-		if (player.inventory.count(item_stack.getItem()) >= d 
-			|| isCreative
-			|| WandItem.getMode()==2
-			|| in_shulker >=d
-		) {
-			boolean is_pane = false;					
-			boolean is_fence = false;
-			boolean is_fence_gate = false;
-			boolean is_stairs = false;
-			boolean is_leaves = false;
-			if (! is_slab) {
-				if (block instanceof PaneBlock) {
-					is_pane = true;
-				} else if (block instanceof FenceBlock) {
-					is_fence = true;
-				} else if (block instanceof FenceGateBlock) {
-					is_fence_gate = true;
-				} else if (block instanceof StairsBlock) {
-					is_stairs = true;
-				} else if (block instanceof LeavesBlock) {
-					is_leaves = true;
+			
+			
+/*
+			RenderSystem.pushMatrix();				
+			RenderSystem.translated(-camX, -camY, -camZ);
+			RenderSystem.enableDepthTest();
+			RenderSystem.enableBlend();
+			RenderSystem.defaultBlendFunc();
+			RenderSystem.disableTexture();
+			
+			
+			GL11.glLineWidth(3.0f);
+			GL11.glBegin(GL11.GL_LINES);
+			*/
+			Block block = block_state.getBlock();
+			
+			int d = 1;
+			boolean is_slab = false;
+			SlabBlock slab = null;		
+			if (block instanceof SlabBlock) {
+				is_slab = true;
+				slab = (SlabBlock) block;
+				if (isDoubleSlab) {
+					d = 2;
 				}
 			}
-			float xp = 0.0f;
-			int max_xp_blocks = 0;
-			if (BLOCKS_PER_XP > 0) {
-				xp = WandItem.calc_xp(player.experienceLevel, experienceProgress);
-				max_xp_blocks = (int) (xp * BLOCKS_PER_XP);
+			ItemStack item_stack = null;
+
+			int it_count=0;
+			if((WandItem.getMode()==4 || WandItem.getMode()==5) && WandItem.fill1_state!=null){
+				item_stack=new ItemStack(WandItem.fill1_state.getBlock());
+			}else{
+				item_stack=new ItemStack(block);
 			}
-			if ( (max_xp_blocks > 0 || BLOCKS_PER_XP == 0 || isCreative)
-					&& (isFullCube|| is_slab || is_pane || is_fence || is_fence_gate|| is_stairs)
-				) {
-				float h = 1.0f;
-				float y0 = 0.0f;
-				if (slab != null) {
-					if (!isSlabTop) {
-						h = 0.5f;
-					} else {
-						y0 = 0.5f;
-						h = 0.5f;
+
+			it_count=player.getInventory().count(item_stack.getItem());
+
+			ItemStack shulker=null;
+			NbtList shulker_items=null;
+			ItemStack offhand=WandsMod.compat.get_player_offhand_stack(player.getInventory());
+			if(offhand!=null && offhand.getItem().getTranslationKey().endsWith("shulker_box")){
+				shulker=offhand;
+			}
+			int in_shulker=0;
+			if(shulker!=null){
+				
+				NbtCompound entity_tag =shulker.getSubTag("BlockEntityTag");
+				shulker_items = entity_tag.getList("Items", 10);		
+				if(shulker_items!=null){
+					for (int i = 0, len = shulker_items.size(); i < len; ++i) {
+						NbtCompound itemTag = shulker_items.getCompound(i);
+						ItemStack s = ItemStack.fromNbt(itemTag);
+						if(WandItem.fill_pos1!=null){
+							Item it=Item.fromBlock(world.getBlockState(WandItem.fill_pos1).getBlock());
+							if( s.getItem()== it){
+								in_shulker+=s.getCount();
+							}
+						}else{
+							if( s.getItem()== item_stack.getItem()){
+								in_shulker+=s.getCount();
+							}
+						}							
+					}
+					//System.out.println("shulker "+in_shulker);
+				}
+			}
+			
+			if (it_count >= d 
+				|| isCreative
+				|| WandItem.getMode()==2
+				|| in_shulker >=d
+			) {
+				boolean is_pane = false;					
+				boolean is_fence = false;
+				boolean is_fence_gate = false;
+				boolean is_stairs = false;
+				boolean is_leaves = false;
+				if (! is_slab) {
+					if (block instanceof PaneBlock) {
+						is_pane = true;
+					} else if (block instanceof FenceBlock) {
+						is_fence = true;
+					} else if (block instanceof FenceGateBlock) {
+						is_fence_gate = true;
+					} else if (block instanceof StairsBlock) {
+						is_stairs = true;
+					} else if (block instanceof LeavesBlock) {
+						is_leaves = true;
 					}
 				}
-				switch (WandItem.getMode()) {
-					case 0: {
-						if (is_pane || is_fence || is_fence_gate) {
-							WandItem.valid = false;
+				float xp = 0.0f;
+				int max_xp_blocks = 0;
+				if (BLOCKS_PER_XP > 0) {
+					xp = WandItem.calc_xp(player.experienceLevel, experienceProgress);
+					max_xp_blocks = (int) (xp * BLOCKS_PER_XP);
+				}
+				if ( (max_xp_blocks > 0 || BLOCKS_PER_XP == 0 || isCreative)
+						&& (isFullCube|| is_slab || is_pane || is_fence || is_fence_gate|| is_stairs)
+					) {
+					float h = 1.0f;
+					float y0 = 0.0f;
+					if (slab != null) {
+						if (!isSlabTop) {
+							h = 0.5f;
+						} else {
+							y0 = 0.5f;
+							h = 0.5f;
+						}
+					}
+					switch (WandItem.getMode()) {
+						case 0: {
+							if (is_pane || is_fence || is_fence_gate) {
+								WandItem.valid = false;
+								break;
+							}
+							mode0(bufferBuilder,c,wand,pos, y0, h, side, world, block_state, player,lim,hit_x,hit_y,hit_z);
+						}
 							break;
+						case 1: {
+							mode1(bufferBuilder,c,wand,pos, y0, h, side, hit_x,hit_y,hit_z, world, block_state,player, lim,
+									max_xp_blocks, item_stack, (is_pane || is_fence || is_fence_gate || is_stairs || is_leaves),isCreative);
 						}
-						mode0(wand,pos, y0, h, side, world, block_state, player,lim,hit_x,hit_y,hit_z);
-					}
-						break;
-					case 1: {
-						mode1(wand,pos, y0, h, side, hit_x,hit_y,hit_z, world, block_state,player, lim,
-								max_xp_blocks, item_stack, (is_pane || is_fence || is_fence_gate || is_stairs || is_leaves),isCreative);
-					}
-						break;
-					case 2: {
-						//player.sendMessage(new LiteralText("m use 2"),true);
-						WandItem.valid = true;
-						if(WandItem.fill_pos1!=null){
-							float x1=WandItem.fill_pos1.getX();
-							float y1=WandItem.fill_pos1.getY();
-							float z1=WandItem.fill_pos1.getZ();
-							float x2=pos.getX();
-							float y2=pos.getY();
-							float z2=pos.getZ();
-							if(!WandItem.fill_pos1.equals(pos)){
-								if(x1>=x2){
-									x1+=1;
+							break;
+						case 2: {
+							//player.sendMessage(new LiteralText("m use 2"),true);
+							WandItem.valid = true;
+							if(WandItem.fill_pos1!=null){
+								float x1=WandItem.fill_pos1.getX();
+								float y1=WandItem.fill_pos1.getY();
+								float z1=WandItem.fill_pos1.getZ();
+								float x2=pos.getX();
+								float y2=pos.getY();
+								float z2=pos.getZ();
+								if(!WandItem.fill_pos1.equals(pos)){
+									if(x1>=x2){
+										x1+=1;
+									}else{
+										x2+=1;
+									}										
+									if(y1>=y2){
+										y1+=1;											
+									}else{
+										y2+=1;
+									}
+									if(z1>=z2){
+										z1+=1;
+									}else{
+										z2+=1;											
+									}
 								}else{
-									x2+=1;
-								}										
-								if(y1>=y2){
-									y1+=1;											
-								}else{
-									y2+=1;
+									x2=x1+1;
+									y2=y1+1;
+									z2=z1+1;
 								}
-								if(z1>=z2){
-									z1+=1;
-								}else{
-									z2+=1;											
+								if(Math.abs(x2-x1)<=lim && Math.abs(y2-y1)<=lim && Math.abs(z2-z1)<=lim){
+									preview(bufferBuilder,c.x+x1,c.y+y1,c.z+z1,c.x+x2,c.y+y2,c.z+z2);
 								}
-							}else{
-								x2=x1+1;
-								y2=y1+1;
-								z2=z1+1;
 							}
-							if(Math.abs(x2-x1)<=lim && Math.abs(y2-y1)<=lim && Math.abs(z2-z1)<=lim){
-								preview(x1,y1,z1,x2,y2,z2);
+						}break;
+						case 3:{
+							mode3(bufferBuilder,c,wand,pos,block_state,world,side);
+						}break;
+						case 4:{
+							WandItem.valid = true;
+							if(WandItem.fill_pos1!=null){
+								float x1=WandItem.fill_pos1.getX();
+								float y1=WandItem.fill_pos1.getY();
+								float z1=WandItem.fill_pos1.getZ();
+								float x2=pos.getX();
+								float y2=pos.getY();
+								float z2=pos.getZ();
+								float xx=x2-x1;
+								float yy=y2-y1;
+								float zz=z2-z1;
+								if(!isCreative && Math.sqrt(xx*xx+yy*yy+zz*zz)>lim){
+									WandItem.valid = false;
+								}else{
+									//RenderSystem.color4f( 255f, 255f, 255f, 255f);
+									//GL11.glVertex3d(x1+0.5, y1+0.5, z1+0.5);
+									//GL11.glVertex3d(x2+0.5, y2+0.5, z2+0.5);
+									bufferBuilder.vertex(c.x+x1+0.5, c.y+y1+0.5, c.z+z1+0.5).color(255,255,255,255).next();
+									bufferBuilder.vertex(c.x+x2+0.5, c.y+y2+0.5, c.z+z2+0.5).color(255,255,255,255).next();
+									line(bufferBuilder,c,WandItem.fill_pos1, pos);
+								}
 							}
+						}break;
+						case 5:{
+							WandItem.valid = true;
+							if(WandItem.fill_pos1!=null){
+								float x1=WandItem.fill_pos1.getX();
+								float y1=WandItem.fill_pos1.getY();
+								float z1=WandItem.fill_pos1.getZ();
+								float x2=pos.getX();
+								float y2=y1;//pos.getY();
+								float z2=pos.getZ();
+								float xx=x2-x1;
+								float yy=y2-y1;
+								float zz=z2-z1;
+								int nbl=(int)Math.ceil(Math.PI*Math.sqrt(xx*xx+yy*yy+zz*zz));
+								
+								if(!isCreative &&  nbl > lim){
+									WandItem.valid = false;
+								}else{
+									//RenderSystem.color4f( 255f, 255f, 255f, 255f);
+									//GL11.glVertex3d(x1+0.5, y1+0.5, z1+0.5);
+									//GL11.glVertex3d(x2+0.5, y2+0.5, z2+0.5);
+									bufferBuilder.vertex(c.x+x1+0.5, c.y+y1+0.5, c.z+z1+0.5).color(255,255,255,255).next();
+									bufferBuilder.vertex(c.x+x2+0.5, c.y+y2+0.5, c.z+z2+0.5).color(255,255,255,255).next();
+									circle(bufferBuilder,c,WandItem.fill_pos1, pos,WandItem.getPlane().ordinal());
+								}
+							}
+						}break;
+						default: {
+							WandItem.valid = false;
 						}
-					}break;
-					case 3:{
-						mode3(wand,pos,block_state,world,side);
-					}break;
-					case 4:{
-						WandItem.valid = true;
-						if(WandItem.fill_pos1!=null){
-							float x1=WandItem.fill_pos1.getX();
-							float y1=WandItem.fill_pos1.getY();
-							float z1=WandItem.fill_pos1.getZ();
-							float x2=pos.getX();
-							float y2=pos.getY();
-							float z2=pos.getZ();
-							float xx=x2-x1;
-							float yy=y2-y1;
-							float zz=z2-z1;
-							if(!isCreative && Math.sqrt(xx*xx+yy*yy+zz*zz)>lim){
-								WandItem.valid = false;
-							}else{
-								RenderSystem.color4f( 255f, 255f, 255f, 255f);
-								GL11.glVertex3d(x1+0.5, y1+0.5, z1+0.5);
-								GL11.glVertex3d(x2+0.5, y2+0.5, z2+0.5);
-								line(WandItem.fill_pos1, pos);
-							}
-						}
-					}break;
-					case 5:{
-						WandItem.valid = true;
-						if(WandItem.fill_pos1!=null){
-							float x1=WandItem.fill_pos1.getX();
-							float y1=WandItem.fill_pos1.getY();
-							float z1=WandItem.fill_pos1.getZ();
-							float x2=pos.getX();
-							float y2=y1;//pos.getY();
-							float z2=pos.getZ();
-							float xx=x2-x1;
-							float yy=y2-y1;
-							float zz=z2-z1;
-							if(!isCreative &&  Math.PI*Math.sqrt(xx*xx+yy*yy+zz*zz) >lim){
-								WandItem.valid = false;
-							}else{
-								RenderSystem.color4f( 255f, 255f, 255f, 255f);
-								GL11.glVertex3d(x1+0.5, y1+0.5, z1+0.5);
-								GL11.glVertex3d(x2+0.5, y2+0.5, z2+0.5);
-								circle(WandItem.fill_pos1, pos,WandItem.getPlane().ordinal());
-							}
-						}
-					}break;
-					default: {
-						WandItem.valid = false;
+							break;
 					}
-						break;
 				}
+			} else {
+				WandItem.valid = false;
 			}
-		} else {
-			WandItem.valid = false;
+			
+			/*GL11.glEnd();
+			RenderSystem.enableBlend();
+			RenderSystem.enableTexture();
+			RenderSystem.popMatrix();
+			*/
+			tessellator.draw();
 		}
-		
-		GL11.glEnd();
-		RenderSystem.enableBlend();
-		RenderSystem.enableTexture();
-		RenderSystem.popMatrix();
 		
 	}
 
-	private static void mode0(WandItem wand,BlockPos pos, float y0, float h, MyDir side, 
+	private static void mode0(BufferBuilder bufferBuilder,Vec3d c,WandItem wand,BlockPos pos, float y0, float h, MyDir side, 
 		World world, BlockState block_state, PlayerEntity player, int lim,double hit_x,double hit_y,double hit_z) {
 		
-		float x = pos.getX();
-		float y = pos.getY();
-		float z = pos.getZ();
-		float o = 0.01f;
+		double x = pos.getX();
+		double y = pos.getY();
+		double z = pos.getZ();
+		double o = 0.01f;
 		switch (side) {
 			case UP:
 				y += h + o;
@@ -278,7 +322,7 @@ public class WandsBaseRenderer{
 				break;
 		}
 
-		grid(side, x, y + y0, z,  h);
+		grid(bufferBuilder,side, c.x+x,c.y+ y + y0, c.z+z,  h);
 		MyDir dirs[] = getMyDirMode0(side, y0, h,hit_x, hit_y, hit_z);
 		MyDir d1 = dirs[0];
 		MyDir d2 = dirs[1];
@@ -310,7 +354,7 @@ public class WandsBaseRenderer{
 					WandItem.y2 = y2;
 					WandItem.z2 = z2;
 					
-					preview( x1 + p_o, y1 + p_o, z1 + p_o, x2 - p_o, y2 - p_o, z2 - p_o);
+					preview(bufferBuilder, c.x+x1 + p_o, c.y+y1 + p_o, c.z+z1 + p_o, c.x+x2 - p_o, c.y+y2 - p_o,c.z+ z2 - p_o);
 				}
 			} else {
 				WandItem.valid = false;
@@ -318,7 +362,7 @@ public class WandsBaseRenderer{
 		}
 	}
 
-	private static void mode1(WandItem wand,BlockPos pos, float y0, float h, MyDir side,double hit_x,double hit_y,double hit_z,
+	private static void mode1(BufferBuilder bufferBuilder,Vec3d c,WandItem wand,BlockPos pos, float y0, float h, MyDir side,double hit_x,double hit_y,double hit_z,
 			World world, BlockState block_state, PlayerEntity player, int lim,
 			int max_xp_blocks, ItemStack item_stack, boolean dont_check_state,boolean isCreative) {
 		MyDir dir = MyDir.EAST;
@@ -382,7 +426,7 @@ public class WandsBaseRenderer{
 			boolean stop2 = false;
 			boolean intersects = false;
 			if (!isCreative) {
-				int n = player.inventory.count(item_stack.getItem());
+				int n = player.getInventory().count(item_stack.getItem());
 				if (n < i) {
 					i = n - 1;
 				}
@@ -459,14 +503,14 @@ public class WandsBaseRenderer{
 				WandItem.y2 = y2 + offy;
 				WandItem.z2 = z2 + offz;
 				
-				preview( x1 + p_o, y1 + p_o, z1 + p_o, x2 - p_o, y2 - p_o, z2 - p_o);
+				preview(bufferBuilder, c.x+x1 + p_o, c.y+y1 + p_o, c.z+z1 + p_o,  c.x+x2 - p_o, c.y+y2 - p_o, c.z+z2 - p_o);
 			}
 		} else {
 			WandItem.valid = false;
 		}
 	}
 
-	static private void mode3(WandItem wand,BlockPos pos,BlockState block_state,World world,MyDir side){
+	static private void mode3(BufferBuilder bufferBuilder,Vec3d c,WandItem wand,BlockPos pos,BlockState block_state,World world,MyDir side){
 		
 		wand.block_buffer_length=0;
 		add_neighbour(wand, pos, block_state, world, side);
@@ -483,7 +527,7 @@ public class WandsBaseRenderer{
 			int y1=wand.block_buffer[a].getY();
 			int z1=wand.block_buffer[a].getZ();
 
-			preview( x1 + p_o, y1 + p_o, z1 + p_o, x1+1 - p_o, y1+1 - p_o, z1+1 - p_o);
+			preview(bufferBuilder,c.x+ x1 + p_o,c.y+ y1 + p_o,c.z+ z1 + p_o, c.x+x1+1 - p_o,c.y+ y1+1 - p_o,c.z+ z1+1 - p_o);
 		}
 		WandItem.valid =(wand.block_buffer_length>0) ;
 	}
@@ -790,270 +834,269 @@ public class WandsBaseRenderer{
 		return ret;
 	}
 
-	private static void preview(float fx1, float fy1, float fz1, float fx2, float fy2, float fz2) {
-		//GL11.glVertex3d
-		RenderSystem.color4f( 255f, 255f, 255f, 255f);
-		GL11.glVertex3d(fx1, fy1, fz1);
-		GL11.glVertex3d(fx2, fy1, fz1);
-		GL11.glVertex3d(fx1, fy1, fz1);
-		GL11.glVertex3d(fx1, fy1, fz2);
-		GL11.glVertex3d(fx1, fy1, fz2);
-		GL11.glVertex3d(fx2, fy1, fz2);
-		GL11.glVertex3d(fx2, fy1, fz1);
-		GL11.glVertex3d(fx2, fy1, fz2);
-		GL11.glVertex3d(fx1, fy2, fz1);
-		GL11.glVertex3d(fx2, fy2, fz1);
-		GL11.glVertex3d(fx1, fy2, fz1);
-		GL11.glVertex3d(fx1, fy2, fz2);
-		GL11.glVertex3d(fx1, fy2, fz2);
-		GL11.glVertex3d(fx2, fy2, fz2);
-		GL11.glVertex3d(fx2, fy2, fz1);
-		GL11.glVertex3d(fx2, fy2, fz2);
-		GL11.glVertex3d(fx1, fy1, fz1);
-		GL11.glVertex3d(fx1, fy2, fz1);
-		GL11.glVertex3d(fx2, fy1, fz1);
-		GL11.glVertex3d(fx2, fy2, fz1);
-		GL11.glVertex3d(fx1, fy1, fz2);
-		GL11.glVertex3d(fx1, fy2, fz2);
-		GL11.glVertex3d(fx2, fy1, fz2);
-		GL11.glVertex3d(fx2, fy2, fz2);
+	private static void preview(BufferBuilder bufferBuilder,double fx1, double fy1, double fz1, double fx2, double fy2, double fz2) {
+		
+		bufferBuilder.vertex(fx1, fy1, fz1).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx2, fy1, fz1).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx1, fy1, fz1).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx1, fy1, fz2).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx1, fy1, fz2).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx2, fy1, fz2).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx2, fy1, fz1).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx2, fy1, fz2).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx1, fy2, fz1).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx2, fy2, fz1).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx1, fy2, fz1).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx1, fy2, fz2).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx1, fy2, fz2).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx2, fy2, fz2).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx2, fy2, fz1).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx2, fy2, fz2).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx1, fy1, fz1).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx1, fy2, fz1).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx2, fy1, fz1).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx2, fy2, fz1).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx1, fy1, fz2).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx1, fy2, fz2).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx2, fy1, fz2).color(255,255,255,255).next();
+		bufferBuilder.vertex(fx2, fy2, fz2).color(255,255,255,255).next();
 	}
 
-	private static void grid(MyDir side, float x, float y, float z, float h) {
+	private static void grid(BufferBuilder bufferBuilder,MyDir side, double x, double y, double z, double h) {
+		
 		switch (side) {
 			case UP:
-			case DOWN: {
-				RenderSystem.color4f( 255f, 255f, 255f, 255f);//w
-				GL11.glVertex3d(x, y, z);
-				GL11.glVertex3d(x + 1.00f, y, z);
-				GL11.glVertex3d(x, y, z);
-				GL11.glVertex3d(x, y, z + 1.00f);
-				GL11.glVertex3d(x + 1.00f, y, z);
-				GL11.glVertex3d(x + 1.00f, y, z + 1.00f);
-				GL11.glVertex3d(x, y, z + 1.00f);
-				GL11.glVertex3d(x + 1.00f, y, z + 1.00f);
-				GL11.glVertex3d(x, y, z + 0.25f);
-				GL11.glVertex3d(x + 1.00f, y, z + 0.25f);
-				GL11.glVertex3d(x, y, z + 0.75f);
-				GL11.glVertex3d(x + 1.00f, y, z + 0.75f);
-				GL11.glVertex3d(x + 0.25f, y, z);
-				GL11.glVertex3d(x + 0.25f, y, z + 1.00f);
-				GL11.glVertex3d(x + 0.75f, y, z);
-				GL11.glVertex3d(x + 0.75f, y, z + 1.00f);
-				RenderSystem.color4f( 178f, 0f, 0f, 255f);//r
-				GL11.glVertex3d(x + 0.40f, y, z + 0.20f);
-				GL11.glVertex3d(x + 0.50f, y, z + 0.05f);
-				GL11.glVertex3d(x + 0.60f, y, z + 0.20f);
-				GL11.glVertex3d(x + 0.50f, y, z + 0.05f);
-				GL11.glVertex3d(x + 0.40f, y, z + 0.80f);
-				GL11.glVertex3d(x + 0.50f, y, z + 0.95f);
-				GL11.glVertex3d(x + 0.60f, y, z + 0.80f);
-				GL11.glVertex3d(x + 0.50f, y, z + 0.95f);
-				GL11.glVertex3d(x + 0.20f, y, z + 0.40f);
-				GL11.glVertex3d(x + 0.05f, y, z + 0.50f);
-				GL11.glVertex3d(x + 0.20f, y, z + 0.60f);
-				GL11.glVertex3d(x + 0.05f, y, z + 0.50f);
-				GL11.glVertex3d(x + 0.80f, y, z + 0.40f);
-				GL11.glVertex3d(x + 0.95f, y, z + 0.50f);
-				GL11.glVertex3d(x + 0.80f, y, z + 0.60f);
-				GL11.glVertex3d(x + 0.95f, y, z + 0.50f);
-				RenderSystem.color4f( 0f,178f,  0f, 255f);//g
-				GL11.glVertex3d(x + 0.40f, y, z + 0.50f);
-				GL11.glVertex3d(x + 0.50f, y, z + 0.40f);
-				GL11.glVertex3d(x + 0.40f, y, z + 0.50f);
-				GL11.glVertex3d(x + 0.50f, y, z + 0.60f);
-				GL11.glVertex3d(x + 0.60f, y, z + 0.50f);
-				GL11.glVertex3d(x + 0.50f, y, z + 0.60f);
-				GL11.glVertex3d(x + 0.50f, y, z + 0.40f);
-				GL11.glVertex3d(x + 0.60f, y, z + 0.50f);
-				RenderSystem.color4f( 0f, 0f,178f, 255f);//b
-				GL11.glVertex3d(x + 0.10f, y, z + 0.10f);
-				GL11.glVertex3d(x + 0.20f, y, z + 0.14f);
-				GL11.glVertex3d(x + 0.10f, y, z + 0.10f);
-				GL11.glVertex3d(x + 0.14f, y, z + 0.20f);
-				GL11.glVertex3d(x + 0.90f, y, z + 0.90f);
-				GL11.glVertex3d(x + 0.80f, y, z + 0.86f);
-				GL11.glVertex3d(x + 0.90f, y, z + 0.90f);
-				GL11.glVertex3d(x + 0.86f, y, z + 0.80f);
-				GL11.glVertex3d(x + 0.90f, y, z + 0.10f);
-				GL11.glVertex3d(x + 0.80f, y, z + 0.14f);
-				GL11.glVertex3d(x + 0.90f, y, z + 0.10f);
-				GL11.glVertex3d(x + 0.86f, y, z + 0.20f);
-				GL11.glVertex3d(x + 0.10f, y, z + 0.90f);
-				GL11.glVertex3d(x + 0.20f, y, z + 0.86f);
-				GL11.glVertex3d(x + 0.10f, y, z + 0.90f);
-				GL11.glVertex3d(x + 0.14f, y, z + 0.80f);
+			case DOWN: {				
+				bufferBuilder.vertex(x, y, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 1.00f, y, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y, z + 1.00f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 1.00f, y, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 1.00f, y, z + 1.00f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y, z + 1.00f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 1.00f, y, z + 1.00f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y, z + 0.25f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 1.00f, y, z + 0.25f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y, z + 0.75f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 1.00f, y, z + 0.75f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 0.25f, y, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 0.25f, y, z + 1.00f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 0.75f, y, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 0.75f, y, z + 1.00f).color(255,255,255,255).next();
+				//RenderSystem.color4f( 178f, 0f, 0f, 255f);//r
+				bufferBuilder.vertex(x + 0.40f, y, z + 0.20f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.50f, y, z + 0.05f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.60f, y, z + 0.20f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.50f, y, z + 0.05f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.40f, y, z + 0.80f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.50f, y, z + 0.95f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.60f, y, z + 0.80f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.50f, y, z + 0.95f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.20f, y, z + 0.40f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.05f, y, z + 0.50f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.20f, y, z + 0.60f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.05f, y, z + 0.50f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.80f, y, z + 0.40f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.95f, y, z + 0.50f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.80f, y, z + 0.60f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.95f, y, z + 0.50f).color(178,0,0,255).next();
+				//RenderSystem.color4f( 0f,178f,  0f, 255f);//g
+				bufferBuilder.vertex(x + 0.40f, y, z + 0.50f).color(0,178,0,255).next();
+				bufferBuilder.vertex(x + 0.50f, y, z + 0.40f).color(0,178,0,255).next();
+				bufferBuilder.vertex(x + 0.40f, y, z + 0.50f).color(0,178,0,255).next();
+				bufferBuilder.vertex(x + 0.50f, y, z + 0.60f).color(0,178,0,255).next();
+				bufferBuilder.vertex(x + 0.60f, y, z + 0.50f).color(0,178,0,255).next();
+				bufferBuilder.vertex(x + 0.50f, y, z + 0.60f).color(0,178,0,255).next();
+				bufferBuilder.vertex(x + 0.50f, y, z + 0.40f).color(0,178,0,255).next();
+				bufferBuilder.vertex(x + 0.60f, y, z + 0.50f).color(0,178,0,255).next();
+				//RenderSystem.color4f( 0f, 0f,178f, 255f);//b
+				bufferBuilder.vertex(x + 0.10f, y, z + 0.10f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.20f, y, z + 0.14f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.10f, y, z + 0.10f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.14f, y, z + 0.20f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.90f, y, z + 0.90f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.80f, y, z + 0.86f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.90f, y, z + 0.90f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.86f, y, z + 0.80f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.90f, y, z + 0.10f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.80f, y, z + 0.14f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.90f, y, z + 0.10f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.86f, y, z + 0.20f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.10f, y, z + 0.90f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.20f, y, z + 0.86f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.10f, y, z + 0.90f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.14f, y, z + 0.80f).color(0,0,178,255).next();
 
 			}
 				break;
 			case NORTH:
 			case SOUTH: {
-				RenderSystem.color4f( 255f, 255f, 255f, 255f);//w
-				GL11.glVertex3d(x, y, z);
-				GL11.glVertex3d(x + 1.00f, y, z);
-				GL11.glVertex3d(x, y, z);
-				GL11.glVertex3d(x, y + 1.00f * h, z);
-				GL11.glVertex3d(x + 1.00f, y, z);
-				GL11.glVertex3d(x + 1.00f, y + 1.00f * h, z);
-				GL11.glVertex3d(x, y + 1.00f * h, z);
-				GL11.glVertex3d(x + 1.00f, y + 1.00f * h, z);
-				GL11.glVertex3d(x, y + 0.25f * h, z);
-				GL11.glVertex3d(x + 1.00f, y + 0.25f * h, z);
-				GL11.glVertex3d(x, y + 0.75f * h, z);
-				GL11.glVertex3d(x + 1.00f, y + 0.75f * h, z);
-				GL11.glVertex3d(x + 0.25f, y, z);
-				GL11.glVertex3d(x + 0.25f, y + 1.00f * h, z);
-				GL11.glVertex3d(x + 0.75f, y, z);
-				GL11.glVertex3d(x + 0.75f, y + 1.00f * h, z);
-				RenderSystem.color4f( 178f, 0, 0, 255f);//r
-				GL11.glVertex3d(x + 0.40f, y + 0.20f * h, z);
-				GL11.glVertex3d(x + 0.50f, y + 0.05f * h, z);
-				GL11.glVertex3d(x + 0.60f, y + 0.20f * h, z);
-				GL11.glVertex3d(x + 0.50f, y + 0.05f * h, z);
-				GL11.glVertex3d(x + 0.40f, y + 0.80f * h, z);
-				GL11.glVertex3d(x + 0.50f, y + 0.95f * h, z);
-				GL11.glVertex3d(x + 0.60f, y + 0.80f * h, z);
-				GL11.glVertex3d(x + 0.50f, y + 0.95f * h, z);
-				GL11.glVertex3d(x + 0.20f, y + 0.40f * h, z);
-				GL11.glVertex3d(x + 0.05f, y + 0.50f * h, z);
-				GL11.glVertex3d(x + 0.20f, y + 0.60f * h, z);
-				GL11.glVertex3d(x + 0.05f, y + 0.50f * h, z);
-				GL11.glVertex3d(x + 0.80f, y + 0.40f * h, z);
-				GL11.glVertex3d(x + 0.95f, y + 0.50f * h, z);
-				GL11.glVertex3d(x + 0.80f, y + 0.60f * h, z);
-				GL11.glVertex3d(x + 0.95f, y + 0.50f * h, z);
-				RenderSystem.color4f( 0f,178f,  0.0f, 255f);//g
-				GL11.glVertex3d(x + 0.40f, y + 0.50f * h, z);
-				GL11.glVertex3d(x + 0.50f, y + 0.40f * h, z);
-				GL11.glVertex3d(x + 0.40f, y + 0.50f * h, z);
-				GL11.glVertex3d(x + 0.50f, y + 0.60f * h, z);
-				GL11.glVertex3d(x + 0.60f, y + 0.50f * h, z);
-				GL11.glVertex3d(x + 0.50f, y + 0.60f * h, z);
-				GL11.glVertex3d(x + 0.50f, y + 0.40f * h, z);
-				GL11.glVertex3d(x + 0.60f, y + 0.50f * h, z);
-				RenderSystem.color4f( 0, 0,255f, 255f);//b
-				GL11.glVertex3d(x + 0.10f, y + 0.10f * h, z);
-				GL11.glVertex3d(x + 0.20f, y + 0.14f * h, z);
-				GL11.glVertex3d(x + 0.10f, y + 0.10f * h, z);
-				GL11.glVertex3d(x + 0.14f, y + 0.20f * h, z);
-				GL11.glVertex3d(x + 0.90f, y + 0.90f * h, z);
-				GL11.glVertex3d(x + 0.80f, y + 0.86f * h, z);
-				GL11.glVertex3d(x + 0.90f, y + 0.90f * h, z);
-				GL11.glVertex3d(x + 0.86f, y + 0.80f * h, z);
-				GL11.glVertex3d(x + 0.90f, y + 0.10f * h, z);
-				GL11.glVertex3d(x + 0.80f, y + 0.14f * h, z);
-				GL11.glVertex3d(x + 0.90f, y + 0.10f * h, z);
-				GL11.glVertex3d(x + 0.86f, y + 0.20f * h, z);
-				GL11.glVertex3d(x + 0.10f, y + 0.90f * h, z);
-				GL11.glVertex3d(x + 0.20f, y + 0.86f * h, z);
-				GL11.glVertex3d(x + 0.10f, y + 0.90f * h, z);
-				GL11.glVertex3d(x + 0.14f, y + 0.80f * h, z);
+				//RenderSystem.color4f( 255f, 255f, 255f, 255f);//w
+				bufferBuilder.vertex(x, y, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 1.00f, y, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y + 1.00f * h, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 1.00f, y, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 1.00f, y + 1.00f * h, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y + 1.00f * h, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 1.00f, y + 1.00f * h, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y + 0.25f * h, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 1.00f, y + 0.25f * h, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y + 0.75f * h, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 1.00f, y + 0.75f * h, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 0.25f, y, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 0.25f, y + 1.00f * h, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 0.75f, y, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x + 0.75f, y + 1.00f * h, z).color(255,255,255,255).next();
+				//RenderSystem.color4f( 178f, 0, 0, 255f);//r
+				bufferBuilder.vertex(x + 0.40f, y + 0.20f * h, z).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.50f, y + 0.05f * h, z).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.60f, y + 0.20f * h, z).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.50f, y + 0.05f * h, z).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.40f, y + 0.80f * h, z).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.50f, y + 0.95f * h, z).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.60f, y + 0.80f * h, z).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.50f, y + 0.95f * h, z).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.20f, y + 0.40f * h, z).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.05f, y + 0.50f * h, z).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.20f, y + 0.60f * h, z).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.05f, y + 0.50f * h, z).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.80f, y + 0.40f * h, z).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.95f, y + 0.50f * h, z).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.80f, y + 0.60f * h, z).color(178,0,0,255).next();
+				bufferBuilder.vertex(x + 0.95f, y + 0.50f * h, z).color(178,0,0,255).next();
+				//RenderSystem.color4f( 0f,178f,  0.0f, 255f).next();//g
+				bufferBuilder.vertex(x + 0.40f, y + 0.50f * h, z).color(0,178,0,255).next();
+				bufferBuilder.vertex(x + 0.50f, y + 0.40f * h, z).color(0,178,0,255).next();
+				bufferBuilder.vertex(x + 0.40f, y + 0.50f * h, z).color(0,178,0,255).next();
+				bufferBuilder.vertex(x + 0.50f, y + 0.60f * h, z).color(0,178,0,255).next();
+				bufferBuilder.vertex(x + 0.60f, y + 0.50f * h, z).color(0,178,0,255).next();
+				bufferBuilder.vertex(x + 0.50f, y + 0.60f * h, z).color(0,178,0,255).next();
+				bufferBuilder.vertex(x + 0.50f, y + 0.40f * h, z).color(0,178,0,255).next();
+				bufferBuilder.vertex(x + 0.60f, y + 0.50f * h, z).color(0,178,0,255).next();
+				//RenderSystem.color4f( 0, 0,255f, 255f).next();//b
+				bufferBuilder.vertex(x + 0.10f, y + 0.10f * h, z).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.20f, y + 0.14f * h, z).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.10f, y + 0.10f * h, z).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.14f, y + 0.20f * h, z).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.90f, y + 0.90f * h, z).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.80f, y + 0.86f * h, z).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.90f, y + 0.90f * h, z).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.86f, y + 0.80f * h, z).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.90f, y + 0.10f * h, z).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.80f, y + 0.14f * h, z).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.90f, y + 0.10f * h, z).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.86f, y + 0.20f * h, z).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.10f, y + 0.90f * h, z).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.20f, y + 0.86f * h, z).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.10f, y + 0.90f * h, z).color(0,0,178,255).next();
+				bufferBuilder.vertex(x + 0.14f, y + 0.80f * h, z).color(0,0,178,255).next();
 			}
 				break;
 			case EAST:
 			case WEST: {
-				RenderSystem.color4f( 255f, 255f, 255f, 255f);//w
-				GL11.glVertex3d(x, y, z);
-				GL11.glVertex3d(x, y + 1.00f * h, z);
-				GL11.glVertex3d(x, y, z);
-				GL11.glVertex3d(x, y, z + 1.00f);
-				GL11.glVertex3d(x, y + 1.00f * h, z);
-				GL11.glVertex3d(x, y + 1.00f * h, z + 1.00f);
-				GL11.glVertex3d(x, y, z + 1.00f);
-				GL11.glVertex3d(x, y + 1.00f * h, z + 1.00f);
-				GL11.glVertex3d(x, y, z + 0.25f);
-				GL11.glVertex3d(x, y + 1.00f * h, z + 0.25f);
-				GL11.glVertex3d(x, y, z + 0.75f);
-				GL11.glVertex3d(x, y + 1.00f * h, z + 0.75f);
-				GL11.glVertex3d(x, y + 0.25f * h, z);
-				GL11.glVertex3d(x, y + 0.25f * h, z + 1.00f);
-				GL11.glVertex3d(x, y + 0.75f * h, z);
-				GL11.glVertex3d(x, y + 0.75f * h, z + 1.00f);
-				RenderSystem.color4f( 178f, 0, 0, 255f);//b
-				GL11.glVertex3d(x, y + 0.40f * h, z + 0.20f);
-				GL11.glVertex3d(x, y + 0.50f * h, z + 0.05f);
-				GL11.glVertex3d(x, y + 0.60f * h, z + 0.20f);
-				GL11.glVertex3d(x, y + 0.50f * h, z + 0.05f);
-				GL11.glVertex3d(x, y + 0.40f * h, z + 0.80f);
-				GL11.glVertex3d(x, y + 0.50f * h, z + 0.95f);
-				GL11.glVertex3d(x, y + 0.60f * h, z + 0.80f);
-				GL11.glVertex3d(x, y + 0.50f * h, z + 0.95f);
-				GL11.glVertex3d(x, y + 0.20f * h, z + 0.40f);
-				GL11.glVertex3d(x, y + 0.05f * h, z + 0.50f);
-				GL11.glVertex3d(x, y + 0.20f * h, z + 0.60f);
-				GL11.glVertex3d(x, y + 0.05f * h, z + 0.50f);
-				GL11.glVertex3d(x, y + 0.80f * h, z + 0.40f);
-				GL11.glVertex3d(x, y + 0.95f * h, z + 0.50f);
-				GL11.glVertex3d(x, y + 0.80f * h, z + 0.60f);
-				GL11.glVertex3d(x, y + 0.95f * h, z + 0.50f);
-				RenderSystem.color4f( 178f, 255f, 255f, 255f);//g
-				GL11.glVertex3d(x, y + 0.40f * h, z + 0.50f);
-				GL11.glVertex3d(x, y + 0.50f * h, z + 0.40f);
-				GL11.glVertex3d(x, y + 0.40f * h, z + 0.50f);
-				GL11.glVertex3d(x, y + 0.50f * h, z + 0.60f);
-				GL11.glVertex3d(x, y + 0.60f * h, z + 0.50f);
-				GL11.glVertex3d(x, y + 0.50f * h, z + 0.60f);
-				GL11.glVertex3d(x, y + 0.50f * h, z + 0.40f);
-				GL11.glVertex3d(x, y + 0.60f * h, z + 0.50f);
-				RenderSystem.color4f( 0, 0,255f, 255f);//b
-				GL11.glVertex3d(x, y + 0.10f * h, z + 0.10f);
-				GL11.glVertex3d(x, y + 0.20f * h, z + 0.14f);
-				GL11.glVertex3d(x, y + 0.10f * h, z + 0.10f);
-				GL11.glVertex3d(x, y + 0.14f * h, z + 0.20f);
-				GL11.glVertex3d(x, y + 0.90f * h, z + 0.90f);
-				GL11.glVertex3d(x, y + 0.80f * h, z + 0.86f);
-				GL11.glVertex3d(x, y + 0.90f * h, z + 0.90f);
-				GL11.glVertex3d(x, y + 0.86f * h, z + 0.80f);
-				GL11.glVertex3d(x, y + 0.90f * h, z + 0.10f);
-				GL11.glVertex3d(x, y + 0.80f * h, z + 0.14f);
-				GL11.glVertex3d(x, y + 0.90f * h, z + 0.10f);
-				GL11.glVertex3d(x, y + 0.86f * h, z + 0.20f);
-				GL11.glVertex3d(x, y + 0.10f * h, z + 0.90f);
-				GL11.glVertex3d(x, y + 0.20f * h, z + 0.86f);
-				GL11.glVertex3d(x, y + 0.10f * h, z + 0.90f);
-				GL11.glVertex3d(x, y + 0.14f * h, z + 0.80f);
+				//RenderSystem.color4f( 255f, 255f, 255f, 255f).next();//w
+				bufferBuilder.vertex(x, y, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y + 1.00f * h, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y, z + 1.00f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y + 1.00f * h, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y + 1.00f * h, z + 1.00f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y, z + 1.00f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y + 1.00f * h, z + 1.00f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y, z + 0.25f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y + 1.00f * h, z + 0.25f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y, z + 0.75f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y + 1.00f * h, z + 0.75f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y + 0.25f * h, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y + 0.25f * h, z + 1.00f).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y + 0.75f * h, z).color(255,255,255,255).next();
+				bufferBuilder.vertex(x, y + 0.75f * h, z + 1.00f).color(255,255,255,255).next();
+				//RenderSystem.color4f( 178f, 0, 0, 255f).next();//b
+				bufferBuilder.vertex(x, y + 0.40f * h, z + 0.20f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x, y + 0.50f * h, z + 0.05f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x, y + 0.60f * h, z + 0.20f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x, y + 0.50f * h, z + 0.05f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x, y + 0.40f * h, z + 0.80f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x, y + 0.50f * h, z + 0.95f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x, y + 0.60f * h, z + 0.80f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x, y + 0.50f * h, z + 0.95f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x, y + 0.20f * h, z + 0.40f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x, y + 0.05f * h, z + 0.50f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x, y + 0.20f * h, z + 0.60f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x, y + 0.05f * h, z + 0.50f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x, y + 0.80f * h, z + 0.40f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x, y + 0.95f * h, z + 0.50f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x, y + 0.80f * h, z + 0.60f).color(178,0,0,255).next();
+				bufferBuilder.vertex(x, y + 0.95f * h, z + 0.50f).color(178,0,0,255).next();
+				//RenderSystem.color4f( 178f, 255f, 255f, 255f).next();//g
+				bufferBuilder.vertex(x, y + 0.40f * h, z + 0.50f).color(0,178,0,255).next();
+				bufferBuilder.vertex(x, y + 0.50f * h, z + 0.40f).color(0,178,0,255).next();
+				bufferBuilder.vertex(x, y + 0.40f * h, z + 0.50f).color(0,178,0,255).next();
+				bufferBuilder.vertex(x, y + 0.50f * h, z + 0.60f).color(0,178,0,255).next();
+				bufferBuilder.vertex(x, y + 0.60f * h, z + 0.50f).color(0,178,0,255).next();
+				bufferBuilder.vertex(x, y + 0.50f * h, z + 0.60f).color(0,178,0,255).next();
+				bufferBuilder.vertex(x, y + 0.50f * h, z + 0.40f).color(0,178,0,255).next();
+				bufferBuilder.vertex(x, y + 0.60f * h, z + 0.50f).color(0,178,0,255).next();
+				//RenderSystem.color4f( 0, 0,255f, 255f).next();//b
+				bufferBuilder.vertex(x, y + 0.10f * h, z + 0.10f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x, y + 0.20f * h, z + 0.14f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x, y + 0.10f * h, z + 0.10f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x, y + 0.14f * h, z + 0.20f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x, y + 0.90f * h, z + 0.90f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x, y + 0.80f * h, z + 0.86f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x, y + 0.90f * h, z + 0.90f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x, y + 0.86f * h, z + 0.80f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x, y + 0.90f * h, z + 0.10f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x, y + 0.80f * h, z + 0.14f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x, y + 0.90f * h, z + 0.10f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x, y + 0.86f * h, z + 0.20f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x, y + 0.10f * h, z + 0.90f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x, y + 0.20f * h, z + 0.86f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x, y + 0.10f * h, z + 0.90f).color(0,0,178,255).next();
+				bufferBuilder.vertex(x, y + 0.14f * h, z + 0.80f).color(0,0,178,255).next();
 
 			}
 				break;
 		}
 	}
 	
-	static private void prev_drawCircle(int xc, int yc,int zc, int x, int y,int z,int plane)
+	static private void prev_drawCircle(BufferBuilder bufferBuilder,Vec3d c,int xc, int yc,int zc, int x, int y,int z,int plane)
 	{
 		switch(plane){
 			case 0://XZ
-				preview( xc+x, yc, zc+z,    xc+x+1, yc+1, zc+z+1 );
-				preview( xc-x, yc, zc+z,    xc-x+1, yc+1, zc+z+1 );
-				preview( xc+x, yc, zc-z,    xc+x+1, yc+1, zc-z+1 );
-				preview( xc-x, yc, zc-z,    xc-x+1, yc+1, zc-z+1 );
-				preview( xc+z, yc, zc+x,    xc+z+1, yc+1, zc+x+1 );
-				preview( xc-z, yc, zc+x,    xc-z+1, yc+1, zc+x+1 );
-				preview( xc+z, yc, zc-x,    xc+z+1, yc+1, zc-x+1 );
-				preview( xc-z, yc, zc-x,    xc-z+1, yc+1, zc-x+1 );		
+				preview(bufferBuilder, c.x+ xc+x, c.y+ yc, c.z+ zc+z,   c.x+ xc+x+1, c.y+ yc+1, c.z+ zc+z+1 );
+				preview(bufferBuilder, c.x+ xc-x, c.y+ yc, c.z+ zc+z,   c.x+ xc-x+1, c.y+ yc+1, c.z+ zc+z+1 );
+				preview(bufferBuilder, c.x+ xc+x, c.y+ yc, c.z+ zc-z,   c.x+ xc+x+1, c.y+ yc+1, c.z+ zc-z+1 );
+				preview(bufferBuilder, c.x+ xc-x, c.y+ yc, c.z+ zc-z,   c.x+ xc-x+1, c.y+ yc+1, c.z+ zc-z+1 );
+				preview(bufferBuilder, c.x+ xc+z, c.y+ yc, c.z+ zc+x,   c.x+ xc+z+1, c.y+ yc+1, c.z+ zc+x+1 );
+				preview(bufferBuilder, c.x+ xc-z, c.y+ yc, c.z+ zc+x,   c.x+ xc-z+1, c.y+ yc+1, c.z+ zc+x+1 );
+				preview(bufferBuilder, c.x+ xc+z, c.y+ yc, c.z+ zc-x,   c.x+ xc+z+1, c.y+ yc+1, c.z+ zc-x+1 );
+				preview(bufferBuilder, c.x+ xc-z, c.y+ yc, c.z+ zc-x,   c.x+ xc-z+1, c.y+ yc+1, c.z+ zc-x+1 );		
 			break;
 			case 1://XY
-				preview( xc+x, yc+y, zc,    xc+x+1, yc+y+1, zc+1 );
-				preview( xc-x, yc+y, zc,    xc-x+1, yc+y+1, zc+1 );
-				preview( xc+x, yc-y, zc,    xc+x+1, yc-y+1, zc+1 );
-				preview( xc-x, yc-y, zc,    xc-x+1, yc-y+1, zc+1 );
-				preview( xc+y, yc+x, zc,    xc+y+1, yc+x+1, zc+1 );
-				preview( xc-y, yc+x, zc,    xc-y+1, yc+x+1, zc+1 );
-				preview( xc+y, yc-x, zc,    xc+y+1, yc-x+1, zc+1 );
-				preview( xc-y, yc-x, zc,    xc-y+1, yc-x+1, zc+1 );
+				preview(bufferBuilder, c.x+ xc+x, c.y+ yc+y, c.z+ zc,   c.x+  xc+x+1,c.y+  yc+y+1,c.z+  zc+1 );
+				preview(bufferBuilder, c.x+ xc-x, c.y+ yc+y, c.z+ zc,   c.x+  xc-x+1,c.y+  yc+y+1,c.z+  zc+1 );
+				preview(bufferBuilder, c.x+ xc+x, c.y+ yc-y, c.z+ zc,   c.x+  xc+x+1,c.y+  yc-y+1,c.z+  zc+1 );
+				preview(bufferBuilder, c.x+ xc-x, c.y+ yc-y, c.z+ zc,   c.x+  xc-x+1,c.y+  yc-y+1,c.z+  zc+1 );
+				preview(bufferBuilder, c.x+ xc+y, c.y+ yc+x, c.z+ zc,   c.x+  xc+y+1,c.y+  yc+x+1,c.z+  zc+1 );
+				preview(bufferBuilder, c.x+ xc-y, c.y+ yc+x, c.z+ zc,   c.x+  xc-y+1,c.y+  yc+x+1,c.z+  zc+1 );
+				preview(bufferBuilder, c.x+ xc+y, c.y+ yc-x, c.z+ zc,   c.x+  xc+y+1,c.y+  yc-x+1,c.z+  zc+1 );
+				preview(bufferBuilder, c.x+ xc-y, c.y+ yc-x, c.z+ zc,   c.x+  xc-y+1,c.y+  yc-x+1,c.z+  zc+1 );
 			break;
 			case 2://YZ
-				preview( xc, yc+y, zc+z,     xc+1, yc+y+1, zc+z+1  );
-				preview( xc, yc-y, zc+z,     xc+1, yc-y+1, zc+z+1  );
-				preview( xc, yc+y, zc-z,     xc+1, yc+y+1, zc-z+1  );
-				preview( xc, yc-y, zc-z,     xc+1, yc-y+1, zc-z+1  );
-				preview( xc, yc+z, zc+y,     xc+1, yc+z+1, zc+y+1  );
-				preview( xc, yc-z, zc+y,     xc+1, yc-z+1, zc+y+1  );
-				preview( xc, yc+z, zc-y,     xc+1, yc+z+1, zc-y+1  );
-				preview( xc, yc-z, zc-y,     xc+1, yc-z+1, zc-y+1  );		
+				preview(bufferBuilder, c.x+ xc, c.y+ yc+y,c.z+  zc+z,   c.x+  xc+1, c.y+ yc+y+1, c.z+ zc+z+1  );
+				preview(bufferBuilder, c.x+ xc, c.y+ yc-y,c.z+  zc+z,   c.x+  xc+1, c.y+ yc-y+1, c.z+ zc+z+1  );
+				preview(bufferBuilder, c.x+ xc, c.y+ yc+y,c.z+  zc-z,   c.x+  xc+1, c.y+ yc+y+1, c.z+ zc-z+1  );
+				preview(bufferBuilder, c.x+ xc, c.y+ yc-y,c.z+  zc-z,   c.x+  xc+1, c.y+ yc-y+1, c.z+ zc-z+1  );
+				preview(bufferBuilder, c.x+ xc, c.y+ yc+z,c.z+  zc+y,   c.x+  xc+1, c.y+ yc+z+1, c.z+ zc+y+1  );
+				preview(bufferBuilder, c.x+ xc, c.y+ yc-z,c.z+  zc+y,   c.x+  xc+1, c.y+ yc-z+1, c.z+ zc+y+1  );
+				preview(bufferBuilder, c.x+ xc, c.y+ yc+z,c.z+  zc-y,   c.x+  xc+1, c.y+ yc+z+1, c.z+ zc-y+1  );
+				preview(bufferBuilder, c.x+ xc, c.y+ yc-z,c.z+  zc-y,   c.x+  xc+1, c.y+ yc-z+1, c.z+ zc-y+1  );		
 			break;
 		}
 	}
-	private static void circle(BlockPos pos0,BlockPos pos1,int plane){
+	private static void circle(BufferBuilder bufferBuilder,Vec3d c,BlockPos pos0,BlockPos pos1,int plane){
 	
 		int r =1;
 		int xc=pos0.getX();
@@ -1067,7 +1110,7 @@ public class WandsBaseRenderer{
 		if(plane==0){//XZ;
 			int x = 0, y=0, z = r;
 			int d = 3 - 2 * r;
-			prev_drawCircle(xc, yc, zc, x, y, z, plane);
+			prev_drawCircle(bufferBuilder,c,xc, yc, zc, x, y, z, plane);
 			while (z >= x)
 			{
 				x++; 
@@ -1078,12 +1121,12 @@ public class WandsBaseRenderer{
 				}
 				else
 					d = d + 4 * x + 6;
-				prev_drawCircle(xc, yc, zc, x, y, z, plane);
+				prev_drawCircle(bufferBuilder,c,xc, yc, zc, x, y, z, plane);
 			}
 		}else if(plane==1){//XY;
 			int x = 0, y = r, z=0;
 			int d = 3 - 2 * r;
-			prev_drawCircle(xc, yc, zc, x, y, z, plane);
+			prev_drawCircle(bufferBuilder,c,xc, yc, zc, x, y, z, plane);
 			while (y >= x)
 			{
 				x++; 
@@ -1094,12 +1137,12 @@ public class WandsBaseRenderer{
 				}
 				else
 					d = d + 4 * x + 6;
-				prev_drawCircle(xc, yc, zc, x, y, z, plane);
+				prev_drawCircle(bufferBuilder,c,xc, yc, zc, x, y, z, plane);
 			}
 		}else if(plane==2){//YZ;
 			int x = 0, y = 0, z=r;
 			int d = 3 - 2 * r;
-			prev_drawCircle(xc, yc, zc, x, y, z, plane);
+			prev_drawCircle(bufferBuilder,c,xc, yc, zc, x, y, z, plane);
 			while (z >= y)
 			{
 				y++; 
@@ -1110,13 +1153,13 @@ public class WandsBaseRenderer{
 				}
 				else
 					d = d + 4 * y + 6;
-				prev_drawCircle(xc, yc, zc, x, y, z, plane);
+				prev_drawCircle(bufferBuilder,c,xc, yc, zc, x, y, z, plane);
 			}
 		}
 	
 	}
 
-	private static void line(BlockPos pos0,BlockPos pos1)  
+	private static void line(BufferBuilder bufferBuilder,Vec3d c,BlockPos pos0,BlockPos pos1)  
     {  
 		
 		int x1=pos0.getX();
@@ -1162,7 +1205,7 @@ public class WandsBaseRenderer{
 				p1 += 2 * dy ;
 				p2 += 2 * dz ;
 				
-				preview(x1, y1, z1,x1+1,y1+1,z1+1);
+				preview(bufferBuilder,c.x+x1, c.y+y1, c.z+z1,c.x+x1+1,c.y+y1+1,c.z+z1+1);
 				//LOGGER.info("line pos " +pos);
 				
 			}
@@ -1181,7 +1224,7 @@ public class WandsBaseRenderer{
 				}
 				p1 += 2 * dx ;
 				p2 += 2 * dz ;
-				preview(x1, y1, z1,x1+1,y1+1,z1+1);
+				preview(bufferBuilder,c.x+x1, c.y+y1, c.z+z1,c.x+x1+1,c.y+y1+1,c.z+z1+1);
 				
 			}
 		}else{
@@ -1199,7 +1242,7 @@ public class WandsBaseRenderer{
 				}
 				p1 += 2 * dy ;
 				p2 += 2 * dx ;				
-				preview(x1, y1, z1,x1+1,y1+1,z1+1);
+				preview(bufferBuilder,c.x+x1, c.y+y1, c.z+z1,c.x+x1+1,c.y+y1+1,c.z+z1+1);
 			}
 		}
     }  

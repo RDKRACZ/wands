@@ -17,7 +17,7 @@ import net.minecraft.block.enums.SlabType;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.options.KeyBinding;
+import net.minecraft.client.option.KeyBinding;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.hit.BlockHitResult;
@@ -130,13 +130,13 @@ public class WandsClientMod implements ClientModInitializer {
 		});*/
 	}
 	public boolean hasWandOnHand(PlayerEntity player){
-		ItemStack item = player.inventory.getMainHandStack();	
+		ItemStack item = player.getInventory().getMainHandStack();	
 		return (item.getItem() instanceof WandItemFabric);
 	}
 	public static void render(MatrixStack matrixStack,double camX, double camY, double camZ) {
 		MinecraftClient client = MinecraftClient.getInstance();
 		ClientPlayerEntity player = client.player;
-		ItemStack stack = player.inventory.getMainHandStack();
+		ItemStack stack = player.getInventory().getMainHandStack();
 		if (stack.getItem() instanceof WandItemFabric) {
 			WandItemFabric wnd=(WandItemFabric)stack.getItem();
 			HitResult hitResult = client.crosshairTarget;

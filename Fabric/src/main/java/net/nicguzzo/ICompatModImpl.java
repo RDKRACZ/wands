@@ -75,12 +75,12 @@ public class ICompatModImpl implements ICompatMod{
         return ItemStack.areEqual(i1,i2);
     }
     public boolean is_player_holding_wand(PlayerEntity player){
-        ItemStack item = player.inventory.getMainHandStack();	
+        ItemStack item = player.getInventory().getMainHandStack();	
         return item.getItem() instanceof WandItemFabric;
     }
     public WandItem get_player_wand(PlayerEntity player){
         if(is_player_holding_wand(player))
-            return ((WandItemFabric)player.inventory.getMainHandStack().getItem()).wand;
+            return ((WandItemFabric)player.getInventory().getMainHandStack().getItem()).wand;
         else
             return null;
     }

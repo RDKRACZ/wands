@@ -10,7 +10,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemUsageContext;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
@@ -39,7 +39,7 @@ public class  PaletteItem extends Item {
     //ItemStack stack=player.getOffHandStack();
     ItemStack stack=context.getStack();
     if(block!=null){
-      CompoundTag compoundTag = stack.getSubTag("palette");
+      NbtCompound compoundTag = stack.getSubTag("palette");
       int id = Block.getRawIdFromState(block_state);
       int[] ids=null;
       if(compoundTag!=null){
@@ -51,7 +51,7 @@ public class  PaletteItem extends Item {
         }
         ids[i]=id;
       }else{
-        compoundTag = new CompoundTag();
+        compoundTag = new NbtCompound();
         ids=new int[1];
         ids[0]=id;
       }
@@ -73,7 +73,7 @@ public class  PaletteItem extends Item {
   @Override
   @Environment(EnvType.CLIENT)
   public void appendTooltip(ItemStack stack, World world, List<Text> tooltip, TooltipContext context) {      
-    CompoundTag compoundTag = stack.getSubTag("blockList");
+    NbtCompound compoundTag = stack.getSubTag("blockList");
     if (compoundTag != null && compoundTag.contains("blockList")) {
       int[] ids=compoundTag.getIntArray("blockList");
       for(int i=0;i<ids.length;i++){

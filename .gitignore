@@ -20,6 +20,7 @@ bin/
 .classpath
 .project
 
+Fabric/remappedSrc
 # fabric
 
 run/

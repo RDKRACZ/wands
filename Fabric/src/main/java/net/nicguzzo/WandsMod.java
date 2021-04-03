@@ -52,10 +52,10 @@ public class WandsMod implements ModInitializer {
 			final int mode = buf.readInt();
 			final int plane = buf.readInt();
 			server.execute(() -> {
-				if (World.isInBuildLimit(state_pos) && World.isInBuildLimit(pos1) && World.isInBuildLimit(pos2)) {
+				if (World.isValid(state_pos) && World.isValid(pos1) && World.isValid(pos2)) {
 					ItemStack stack=player.getMainHandStack();
 					if (stack.getItem() instanceof WandItemFabric) {
-						WandServerSide.placeBlock(player,state_pos,pos1,pos2,p,player.abilities.creativeMode,player.experienceProgress,stack,mode,plane);
+						WandServerSide.placeBlock(player,state_pos,pos1,pos2,p,player.getAbilities().creativeMode,player.experienceProgress,stack,mode,plane);
 					}
 				}
 			});
