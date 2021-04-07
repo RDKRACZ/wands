@@ -2,10 +2,7 @@ package net.nicguzzo.common;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtList;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.nicguzzo.WandsMod;
@@ -161,11 +158,13 @@ abstract public class WandItem  {
     abstract public void playSound(PlayerEntity player,BlockState block_state,BlockPos pos);
     abstract public boolean playerInvContains(PlayerEntity player,ItemStack item);
     
+
     public void left_click_use(World world) {
         if(isClient(world)){
-            fill_pos1=null;
-            fill1_state=null;
-            System.out.println("pos1 null");
+            WandItem.fill_pos1=null;
+            WandItem.fill1_state=null;
+            //System.out.println("pos1 null");
+            WandsMod.compat.send_message_to_player("wand reset, mode: "+mode+ " palette_mode: "+palette_mode);
         }
     }
 
@@ -174,10 +173,10 @@ abstract public class WandItem  {
         if(!isClient(world)){
             return false;
         }
-                
+        //System.out.println("valid: "+valid);
         if(!valid){
-            fill_pos1=null;            
-            fill1_state=null;
+            WandItem.fill_pos1=null;           
+            WandItem.fill1_state=null; 
             return false;
         }
         BlockState block_state=world.getBlockState(pos_state);
@@ -188,39 +187,10 @@ abstract public class WandItem  {
         }else{
             item_stack=new ItemStack(block_state.getBlock());
         }
-
-        ItemStack shulker=null;
-		NbtList shulker_items=null;
-		ItemStack offhand=WandsMod.compat.get_player_offhand_stack(player.getInventory());
-		if(offhand!=null && offhand.getItem().getTranslationKey().endsWith("shulker_box")){
-			shulker=offhand;
-		}
-		int in_shulker=0;
-		if(shulker!=null){
-			
-			NbtCompound entity_tag =shulker.getSubTag("BlockEntityTag");
-			shulker_items = entity_tag.getList("Items", 10);		
-			if(shulker_items!=null){
-				for (int i = 0, len = shulker_items.size(); i < len; ++i) {
-					NbtCompound itemTag = shulker_items.getCompound(i);
-					ItemStack s = ItemStack.fromNbt(itemTag);
-                    if(WandItem.fill_pos1!=null){
-						Item it=Item.fromBlock(world.getBlockState(WandItem.fill_pos1).getBlock());
-						if( s.getItem()== it){
-							in_shulker+=s.getCount();
-						}
-					}else{
-                        if( s.getItem()== item_stack.getItem()){
-                            in_shulker+=s.getCount();
-                        }							
-                    }
-				}
-				//System.out.println("shulker "+in_shulker);
-			}
-		}
-        
-        
-        if(playerInvContains(player,item_stack) || isCreative(player) || mode==2 || in_shulker>0){
+        boolean mm = palette_mode!=WandItem.PaletteMode.SAME && (mode == 2 || mode == 4|| mode == 5);
+		int in_shulker=WandsMod.compat.in_shulker(player, item_stack);
+                
+        if(playerInvContains(player,item_stack) || isCreative(player) || mm || in_shulker>0 ||fill_pos1 != null){
             switch (mode) {
                 case 0:
                     WandItem.fill_pos1=null;
@@ -276,7 +246,7 @@ abstract public class WandItem  {
                             if(fill1_state!=null){
                                 playSound(player,fill1_state,WandItem.fill_pos1); 
                             }
-                            WandsMod.compat.send_message_to_player("fill from "+WandItem.fill_pos1+" to "+fill_pos2);
+                            WandsMod.compat.send_message_to_player("filled from "+WandItem.fill_pos1+" to "+fill_pos2);
                             //player.sendMessage(new LiteralText("fill from "+WandItem.fill_pos1+" to "+fill_pos2),true);
                         }
                         WandItem.fill_pos1=null;

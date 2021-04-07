@@ -79,6 +79,7 @@ public class  WandItemFabric extends ToolItem
         public boolean playerInvContains(PlayerEntity player, ItemStack item) {
             return player.getInventory().contains(item);
         }
+        
     }
     public WandItemImpl wand=null;
     
