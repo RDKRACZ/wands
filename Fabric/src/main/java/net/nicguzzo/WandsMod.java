@@ -11,6 +11,7 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.world.World;
+import net.nicguzzo.common.MyDir;
 import net.nicguzzo.common.WandServerSide;
 import net.nicguzzo.common.WandsConfig;
 
@@ -57,12 +58,13 @@ public class WandsMod implements ModInitializer {
 			final int p = buf.readInt();
 			final int mode = buf.readInt();
 			final int plane = buf.readInt();
+			final int side = buf.readInt();
 			server.execute(() -> {
 				if (World.isValid(state_pos) && World.isValid(pos1) && World.isValid(pos2)) {
 					ItemStack stack = player.getMainHandStack();
 					if (stack.getItem() instanceof WandItemFabric) {
 						WandServerSide srv = new WandServerSide(player.world, player, state_pos, pos1, pos2, p,
-								player.getAbilities().creativeMode, player.experienceProgress, stack, mode, plane);
+								player.getAbilities().creativeMode, player.experienceProgress, stack, mode, plane,MyDir.values()[side]);
 						srv.placeBlock();
 						srv = null;
 					}
