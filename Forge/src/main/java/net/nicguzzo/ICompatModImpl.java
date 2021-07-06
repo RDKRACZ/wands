@@ -118,11 +118,11 @@ public class ICompatModImpl implements ICompatMod{
         else
             return null;
     }
-    public void inc_wand_damage(PlayerEntity player,ItemStack stack,int damage){
+    public void inc_damage(PlayerEntity player,ItemStack stack,int damage,boolean main_hand){
         
         stack.hurtAndBreak(damage, (LivingEntity)player, 
 						(Consumer<LivingEntity>)((p) -> {
-								((LivingEntity)p).broadcastBreakEvent(Hand.MAIN_HAND);
+								((LivingEntity)p).broadcastBreakEvent((main_hand?Hand.MAIN_HAND:Hand.OFF_HAND));
 							}
 						)
 					);
@@ -323,4 +323,10 @@ public class ICompatModImpl implements ICompatMod{
     public void send_block_placed(PlayerEntity player, BlockPos pos, boolean destroy) {        
         WandsPacketHandler.INSTANCE.sendTo(new SendBlockPlaced(pos,destroy), ((ServerPlayerEntity)player).connection.getConnection(), NetworkDirection.PLAY_TO_CLIENT);
     }
+    @Override
+    public void block_after_break(Block block, World world, PlayerEntity player, BlockPos pos, BlockState state,
+            ItemStack stack) {        
+            block.playerDestroy(world, player, pos, state, null, stack);
+    }
+    
 }

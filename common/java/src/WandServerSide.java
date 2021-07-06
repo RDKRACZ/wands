@@ -2,6 +2,7 @@ package net.nicguzzo.common;
 
 import java.util.Vector;
 
+import net.minecraft.block.AirBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
@@ -29,6 +30,7 @@ public class WandServerSide {
 	public PlayerEntity player;
 	public Vector<Integer> slots;
 	public BlockState state;
+	public BlockState offhand_state=null;
 	public BlockPos pos_state;
 	public BlockPos pos0;
 	public BlockPos pos1;
@@ -61,15 +63,24 @@ public class WandServerSide {
 		this.plane = plane;
 		this.side=side;
 		this.pos_state=pos_state;
-		System.out.println("state " + state);
+		//System.out.println("state " + state);
 		offhand = WandsMod.compat.get_player_offhand_stack(player);
-		
+		//System.out.println("offhand "+offhand);
 
 		destroy=WandsMod.compat.can_destroy(state,offhand,isCreative);
 		
 		if(!destroy){
 			if (WandsMod.compat.is_shulker(player, offhand)) {
 				shulker = offhand;
+			}
+			if(shulker==null && offhand!=null && !offhand.isEmpty() /*&& (this.mode==2 || this.mode==3 || this.mode==4 ||this.mode==5) */){
+				Block bbb=WandsMod.compat.block_from_item(offhand.getItem());
+				//System.out.println("offhand "+offhand);
+				//System.out.println("bbb "+bbb);
+				if(bbb!=null && !(bbb instanceof AirBlock)){
+					offhand_state=WandsMod.compat.getDefaultBlockState(bbb);
+				}
+				//System.out.println("offhand_state "+offhand_state);
 			}
 			if (this.mode<2 || this.palatte_mode == WandItem.PaletteMode.SAME) {
 				if (shulker != null) {
@@ -96,45 +107,25 @@ public class WandServerSide {
 	}
 
 	public void placeBlock() {
-		System.out.println("placeBlock");
-		System.out.println("pos_state "+pos_state);
-		System.out.println("pos0 "+pos0);
-		System.out.println("pos1 "+pos1);
-		boolean placed=false;
+		//System.out.println("placeBlock");
+		//System.out.println("pos_state "+pos_state);
+		//System.out.println("pos0 "+pos0);
+		//System.out.println("pos1 "+pos1);
+		int placed=0;
+		WandItem wand=WandsMod.compat.get_player_wand(player);
 		if (mode==0 && pos0.equals(pos1)) {
 			placed=place(pos0);
 		}else if (mode == 3) {
-			WandItem wand=WandsMod.compat.get_player_wand(player);
+			
 			BlockBuffer bb=new BlockBuffer(wand.getLimit());			
 			WandsBaseRenderer.mode3(bb,wand,pos_state, state, world, side,destroy);
-			System.out.println("length "+bb.length);
+			//System.out.println("length "+bb.length);
 			for (int a = 0; a < bb.length; a++) {			
 				BlockPos p=bb.buffer[a];
-				placed= place(p)|| placed;
+				placed= place(p);
 			}
 		}else {
-			int xs, ys, zs, xe, ye, ze;
-			if (pos0.getX() >= pos1.getX()) {
-				xs = pos1.getX() + 1;
-				xe = pos0.getX() + 1;
-			} else {
-				xs = pos0.getX();
-				xe = pos1.getX();
-			}
-			if (pos0.getY() >= pos1.getY()) {
-				ys = pos1.getY() + 1;
-				ye = pos0.getY() + 1;
-			} else {
-				ys = pos0.getY();
-				ye = pos1.getY();
-			}
-			if (pos0.getZ() >= pos1.getZ()) {
-				zs = pos1.getZ() + 1;
-				ze = pos0.getZ() + 1;
-			} else {
-				zs = pos0.getZ();
-				ze = pos1.getZ();
-			}
+			
 			if (mode == 4) {// line
 				// System.out.println("Line! pos0 "+pos0+" pos1 "+pos1);
 				placed=line();
@@ -142,19 +133,54 @@ public class WandServerSide {
 				// System.out.println("circle! pos0 "+pos0+" pos1 "+pos1);
 				placed=circle();
 			} else {// box
-				for (int z = zs; z < ze; z++) {
-					for (int y = ys; y < ye; y++) {
-						for (int x = xs; x < xe; x++) {
-							placed=place(new BlockPos(x, y, z));
+				int xs, ys, zs, xe, ye, ze;
+			
+				if (pos0.getX() >= pos1.getX()) {
+					xs = pos1.getX();
+					xe = pos0.getX();
+				} else {
+					xs = pos0.getX();
+					xe = pos1.getX();
+				}
+				if (pos0.getY() >= pos1.getY()) {
+					ys = pos1.getY();
+					ye = pos0.getY();
+				} else {
+					ys = pos0.getY();
+					ye = pos1.getY();
+				}
+				if (pos0.getZ() >= pos1.getZ()) {
+					zs = pos1.getZ();
+					ze = pos0.getZ();
+				} else {
+					zs = pos0.getZ();
+					ze = pos1.getZ();
+				}
+				
+				int limit=32768;
+				if(!isCreative){
+					limit=wand.getLimit();
+				}
+				
+				int ll=((xe-xs)+1)*((ye-ys)+1)*((ze-zs)+1);
+				
+				if(ll <= limit){
+					for (int z = zs; z <= ze; z++) {					
+						for (int y = ys; y <= ye; y++) {						
+							for (int x = xs; x <= xe; x++) {								
+								placed+=place(new BlockPos(x, y, z));
+							}
 						}
 					}
+				}else{
+					//System.out.println("limit reached "+ll);
 				}
 			}
 		}
 		slots = null;
-		if(placed){
+		//System.out.println("placed "+placed);
+		if(placed>0){
 			WandsMod.compat.send_block_placed(player,pos_state,destroy);
-			//WandsMod.compat.playBlockSound(player,state,pos,destroy);
 		}
 	}
 
@@ -204,23 +230,27 @@ public class WandServerSide {
 		}
 	}
 
-	private boolean place(BlockPos pos) {
+	private int place(BlockPos pos) {
 
-		boolean placed = false;
+		int placed = 0;
 		ItemStack item_stack = null;
 		Block blk = null;
 		
-
-		if (slots.size() > 0) {
-			if (mode != 0) {
-				this.nextSlot();
-			}
-			if (shulker!=null) {
-				item_stack =WandsMod.compat.item_from_shulker(shulker,slots.get(slt));
-			} else {
-				item_stack = WandsMod.compat.get_player_main_stack(player, slots.get(slt));
+		if (offhand_state!=null) {
+			item_stack = offhand;
+		} else{
+			if (slots.size() > 0) {
+				if (mode != 0) {
+					this.nextSlot();
+				}
+				if (shulker!=null) {
+					item_stack =WandsMod.compat.item_from_shulker(shulker,slots.get(slt));
+				} else {
+					item_stack = WandsMod.compat.get_player_main_stack(player, slots.get(slt));
+				}
 			}
 		}
+		
 		if (item_stack == null){
 			item_stack = new ItemStack(state.getBlock());
 		}
@@ -229,7 +259,7 @@ public class WandServerSide {
 			state = WandsMod.compat.random_rotate(WandsMod.compat.getDefaultBlockState(blk), world);				
 		}
 		//System.out.println("state " + state);
-		System.out.println("destroy " + destroy);
+		//System.out.println("destroy " + destroy);
 
 		Block block = state.getBlock();
 		BlockState state2 = world.getBlockState(pos);
@@ -258,10 +288,17 @@ public class WandServerSide {
 				u.put(pos, state,destroy);
 				if(destroy){
 					//placed=world.breakBlock(pos, false);
-					placed=WandsMod.compat.destroy_block(world, pos, false);
+					if(WandsMod.compat.destroy_block(world, pos, false))
+						placed++;
 					//placed=WandsMod.compat.setBlockState(world,pos, WandsMod.compat.getDefaultBlockState( Blocks.AIR));					
-				}else{
-					placed=WandsMod.compat.setBlockState(world,pos,state);
+				}else{					
+					if(offhand_state!=null){
+						if(WandsMod.compat.setBlockState(world,pos,offhand_state))
+							placed++;
+					}else{
+						if(WandsMod.compat.setBlockState(world,pos,state))
+							placed++;
+					}
 				}
 				/*if(placed)
 					WandsMod.compat.playBlockSound(player,state,pos,destroy);*/
@@ -276,58 +313,73 @@ public class WandServerSide {
 				if (BLOCKS_PER_XP == 0 || (xp - dec) > 0) {
 
 					if(destroy){
-						placed=WandsMod.compat.destroy_block(world, pos, false);
-						//placed=world.breakBlock(pos, false,player);
-						//placed=WandsMod.compat.setBlockState(world,pos, WandsMod.compat.getDefaultBlockState( Blocks.AIR));
-						if(placed && WandsMod.config.destroy_in_survival_drop){
-							int silk_touch = WandsMod.compat.get_silk_touch_level(offhand);
-            				int fortune = WandsMod.compat.get_fortune_level(offhand);
-							if(fortune==3){
-								WandsMod.compat.dropStacks(state,world, pos);
-							}
-							if(silk_touch>0){
-								WandsMod.compat.dropStack(world, pos,item_stack);
-							}
-						}						
+						BlockState st=world.getBlockState(pos);
+						if(WandsMod.compat.can_destroy(st,offhand,isCreative)){
+
+							boolean p=WandsMod.compat.destroy_block(world, pos, false);
+							if(p)
+								placed++;
+							if(p && WandsMod.config.destroy_in_survival_drop){
+								int silk_touch = WandsMod.compat.get_silk_touch_level(offhand);
+								int fortune = WandsMod.compat.get_fortune_level(offhand);
+								if(fortune>0 || silk_touch>0){
+									//System.out.println("drop state "+st);
+									WandsMod.compat.block_after_break(st.getBlock(),world, player, pos, state, offhand);
+								}
+								/*if(fortune==3){
+									WandsMod.compat.dropStacks(state,world, pos);
+								}
+								if(silk_touch>0){
+									//System.out.println("drop state "+st);
+									if(st!=null){									
+										ItemStack it=new ItemStack(st.getBlock());
+										//System.out.println("drop item "+it);
+										WandsMod.compat.dropStack(world, pos,it);
+									}
+								}*/
+							}			
+						}			
 					}else{
-						if (shulker != null && slots.size() > 0) {						
-							placed = WandsMod.compat.setBlockState(world,pos,state);
-							if (placed) {
+						if (shulker != null && slots.size() > 0) {													
+							if (WandsMod.compat.setBlockState(world,pos,state)) {
+								placed++;
 								WandsMod.compat.remove_item_from_shulker(shulker,  slots.get(slt), d);
 							}						
 						} else {
-							ItemStack off_hand_stack = WandsMod.compat.get_player_offhand_stack(player);
-							if (!off_hand_stack.isEmpty() && item_stack.getItem() == off_hand_stack.getItem()
-									&& off_hand_stack.getCount() >= d) {
-								placed = WandsMod.compat.setBlockState(world,pos,state);
-								if (placed)
-									WandsMod.compat.player_offhand_stack_dec(player, d);
-							} else {
-								for (int i = 0; i < WandsMod.compat.get_main_inventory_size(player); ++i) {
-									ItemStack stack2 = WandsMod.compat.get_player_main_stack(player, i);
-									if (stack2!=null && item_stack!=null 
-										&& !stack2.isEmpty() && item_stack.getItem() == stack2.getItem()
-										&& stack2.getCount() >= d) 
-									{
-										slot = i;
-									}
+							//ItemStack off_hand_stack = WandsMod.compat.get_player_offhand_stack(player);
+							
+							//System.out.println("item_stack "+item_stack);
+							for (int i = 0; i < WandsMod.compat.get_main_inventory_size(player); ++i) {
+								ItemStack stack2 = WandsMod.compat.get_player_main_stack(player, i);
+								if (stack2!=null && item_stack!=null 
+									&& !stack2.isEmpty() && item_stack.getItem() == stack2.getItem()
+									&& stack2.getCount() >= d) 
+								{
+									slot = i;
 								}
-								if (slot > -1) {
-									placed = WandsMod.compat.setBlockState(world,pos,state);
-									if (placed) {
-										WandsMod.compat.player_stack_dec(player, slot, d);
-									}
+							}
+							//System.out.println("slot "+slot);
+							if (slot > -1) {
+								boolean p=false;
+								if (offhand_state!=null) {
+									p = WandsMod.compat.setBlockState(world,pos,offhand_state);									
+								} else{
+									p = WandsMod.compat.setBlockState(world,pos,state);
+								}
+								if (p) {
+									placed++;
+									WandsMod.compat.player_stack_dec(player, slot, d);
 								}
 							}
 						}
 					}
 					//System.out.println("placed"+placed);
-					if (placed) {
+					if (placed>0) {
 						//WandsMod.compat.playBlockSound(player,state,pos,destroy);
 						if(destroy){							
-							WandsMod.compat.inc_wand_damage(player, offhand, 1);
+							WandsMod.compat.inc_damage(player, offhand, 1,false);
 						}
-						WandsMod.compat.inc_wand_damage(player, wand_stack, 1);
+						WandsMod.compat.inc_damage(player, wand_stack, 1,true);
 
 						if (BLOCKS_PER_XP != 0) {
 							float diff = WandItem.calc_xp_to_next_level(player.experienceLevel);
@@ -364,8 +416,8 @@ public class WandServerSide {
 
 	// bresenham 3d from
 	// https://www.geeksforgeeks.org/bresenhams-algorithm-for-3-d-line-drawing/
-	private boolean line() {
-		boolean placed=false;
+	private int line() {
+		int placed=0;
 		int x1 = pos0.getX();
 		int y1 = pos0.getY();
 		int z1 = pos0.getZ();
@@ -391,7 +443,7 @@ public class WandServerSide {
 		} else {
 			zs = -1;
 		}
-		placed=place(new BlockPos(x1, y1, z1));
+		placed+=place(new BlockPos(x1, y1, z1));
 		// X
 		if (dx >= dy && dx >= dz) {
 			p1 = 2 * dy - dx;
@@ -409,7 +461,7 @@ public class WandServerSide {
 				p1 += 2 * dy;
 				p2 += 2 * dz;
 
-				placed=place(new BlockPos(x1, y1, z1)) ||placed ;
+				placed+=place(new BlockPos(x1, y1, z1));
 			}
 		} else if (dy >= dx && dy >= dz) {
 			p1 = 2 * dx - dy;
@@ -426,7 +478,7 @@ public class WandServerSide {
 				}
 				p1 += 2 * dx;
 				p2 += 2 * dz;
-				placed=place(new BlockPos(x1, y1, z1))||placed ;
+				placed+=place(new BlockPos(x1, y1, z1));
 			}
 		} else {
 			p1 = 2 * dy - dz;
@@ -443,52 +495,52 @@ public class WandServerSide {
 				}
 				p1 += 2 * dy;
 				p2 += 2 * dx;
-				placed=place(new BlockPos(x1, y1, z1))||placed ;
+				placed+=place(new BlockPos(x1, y1, z1));
 			}
 		}
 		return placed;
 	}
 
-	private boolean drawCircle(int xc, int yc, int zc, int x, int y, int z) {
-		boolean placed=false;
+	private int drawCircle(int xc, int yc, int zc, int x, int y, int z) {
+		int placed=0;
 		switch (plane) {
 		case 0:
-			placed=place(new BlockPos(xc + x, yc, zc + z))||placed ;
-			placed=place(new BlockPos(xc - x, yc, zc + z))||placed ;
-			placed=place(new BlockPos(xc + x, yc, zc - z))||placed ;
-			placed=place(new BlockPos(xc - x, yc, zc - z))||placed ;
-			placed=place(new BlockPos(xc + z, yc, zc + x))||placed ;
-			placed=place(new BlockPos(xc - z, yc, zc + x))||placed ;
-			placed=place(new BlockPos(xc + z, yc, zc - x))||placed ;
-			placed=place(new BlockPos(xc - z, yc, zc - x))||placed ;
+			placed+=place(new BlockPos(xc + x, yc, zc + z));
+			placed+=place(new BlockPos(xc - x, yc, zc + z));
+			placed+=place(new BlockPos(xc + x, yc, zc - z));
+			placed+=place(new BlockPos(xc - x, yc, zc - z));
+			placed+=place(new BlockPos(xc + z, yc, zc + x));
+			placed+=place(new BlockPos(xc - z, yc, zc + x));
+			placed+=place(new BlockPos(xc + z, yc, zc - x));
+			placed+=place(new BlockPos(xc - z, yc, zc - x));
 
 			break;
 		case 1:
-			placed=place(new BlockPos(xc + x, yc + y, zc))||placed ;
-			placed=place(new BlockPos(xc - x, yc + y, zc))||placed ;
-			placed=place(new BlockPos(xc + x, yc - y, zc))||placed ;
-			placed=place(new BlockPos(xc - x, yc - y, zc))||placed ;
-			placed=place(new BlockPos(xc + y, yc + x, zc))||placed ;
-			placed=place(new BlockPos(xc - y, yc + x, zc))||placed ;
-			placed=place(new BlockPos(xc + y, yc - x, zc))||placed ;
-			placed=place(new BlockPos(xc - y, yc - x, zc))||placed ;
+			placed+=place(new BlockPos(xc + x, yc + y, zc));
+			placed+=place(new BlockPos(xc - x, yc + y, zc));
+			placed+=place(new BlockPos(xc + x, yc - y, zc));
+			placed+=place(new BlockPos(xc - x, yc - y, zc));
+			placed+=place(new BlockPos(xc + y, yc + x, zc));
+			placed+=place(new BlockPos(xc - y, yc + x, zc));
+			placed+=place(new BlockPos(xc + y, yc - x, zc));
+			placed+=place(new BlockPos(xc - y, yc - x, zc));
 			break;
 		case 2:
-			placed=place(new BlockPos(xc, yc - y, zc + z))||placed ;
-			placed=place(new BlockPos(xc, yc + y, zc + z))||placed ;
-			placed=place(new BlockPos(xc, yc + y, zc - z))||placed ;
-			placed=place(new BlockPos(xc, yc - y, zc - z))||placed ;
-			placed=place(new BlockPos(xc, yc + z, zc + y))||placed ;
-			placed=place(new BlockPos(xc, yc - z, zc + y))||placed ;
-			placed=place(new BlockPos(xc, yc + z, zc - y))||placed ;
-			placed=place(new BlockPos(xc, yc - z, zc - y))||placed ;
+			placed+=place(new BlockPos(xc, yc - y, zc + z));
+			placed+=place(new BlockPos(xc, yc + y, zc + z));
+			placed+=place(new BlockPos(xc, yc + y, zc - z));
+			placed+=place(new BlockPos(xc, yc - y, zc - z));
+			placed+=place(new BlockPos(xc, yc + z, zc + y));
+			placed+=place(new BlockPos(xc, yc - z, zc + y));
+			placed+=place(new BlockPos(xc, yc + z, zc - y));
+			placed+=place(new BlockPos(xc, yc - z, zc - y));
 			break;
 		}
 		return placed;
 	}
 
-	boolean circle() {
-		boolean placed=false;
+	int circle() {
+		int placed=0;
 		int r = 1;
 		int xc = pos0.getX();
 		int yc = pos0.getY();
@@ -500,7 +552,7 @@ public class WandServerSide {
 		if (plane == 0) {// XZ;
 			int x = 0, y = 0, z = r;
 			int d = 3 - 2 * r;
-			placed=drawCircle(xc, yc, zc, x, y, z)||placed ;
+			placed+=drawCircle(xc, yc, zc, x, y, z);
 			while (z >= x) {
 				x++;
 				if (d > 0) {
@@ -508,12 +560,12 @@ public class WandServerSide {
 					d = d + 4 * (x - z) + 10;
 				} else
 					d = d + 4 * x + 6;
-					placed=drawCircle(xc, yc, zc, x, y, z)||placed ;
+					placed+=drawCircle(xc, yc, zc, x, y, z);
 			}
 		} else if (plane == 1) {// XY;
 			int x = 0, y = r, z = 0;
 			int d = 3 - 2 * r;
-			placed=drawCircle(xc, yc, zc, x, y, z)||placed ;
+			placed+=drawCircle(xc, yc, zc, x, y, z);
 			while (y >= x) {
 				x++;
 				if (d > 0) {
@@ -521,12 +573,12 @@ public class WandServerSide {
 					d = d + 4 * (x - y) + 10;
 				} else
 					d = d + 4 * x + 6;
-				placed=drawCircle(xc, yc, zc, x, y, z)||placed ;
+					placed+=drawCircle(xc, yc, zc, x, y, z);
 			}
 		} else if (plane == 2) {// YZ;
 			int x = 0, y = 0, z = r;
 			int d = 3 - 2 * r;
-			placed=drawCircle(xc, yc, zc, x, y, z)||placed ;
+			placed+=drawCircle(xc, yc, zc, x, y, z);
 			while (z >= y) {
 				y++;
 				if (d > 0) {
@@ -534,7 +586,7 @@ public class WandServerSide {
 					d = d + 4 * (y - z) + 10;
 				} else
 					d = d + 4 * y + 6;
-				placed=drawCircle(xc, yc, zc, x, y, z)||placed ;
+					placed+=drawCircle(xc, yc, zc, x, y, z);
 			}
 		}
 		return placed;
