@@ -8,8 +8,9 @@
     "nicguzzo"
   ],
   "contact": {
-    "homepage": "",
-    "sources": "https://github.com/nicguzzo/wands"
+    "homepage": "https://www.curseforge.com/minecraft/mc-mods/building-wands",
+    "sources": "https://github.com/nicguzzo/wands",
+    "issues": "https://github.com/nicguzzo/wands/issues"
   },
   "license": "Insert License Here",
   "icon": "assets/wands/icon.png",
@@ -31,8 +32,5 @@
     "fabric": "*",
     "minecraft": ">=${min_minecraft_version}",
     "architectury": ">=${min_architectury}"
-  },
-  "suggests": {
-    "flamingo": "*"
   }
 }
